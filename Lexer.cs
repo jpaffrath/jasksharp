@@ -69,6 +69,10 @@ public class Lexer
                     AddToken(TokenType.Slash);
                 }
                 break;
+            case '#':
+                // ignore comments until the end of the line
+                while (Peek() != '\n' && !IsAtEnd()) Advance();
+                break;
             case '=':
                 if (Match('=')) AddToken(TokenType.EqualEqual);
                 else throw new LangException("Unknown character '='. Did you mean '=='?", _line);
