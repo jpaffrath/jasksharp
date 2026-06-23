@@ -84,7 +84,29 @@ public class Parser(List<Token> tokens)
     private Statement ForStatement()
     {
         // for <variable> from <start> to <end> [with <increment>]
+        // OR
+        // for <variable> in <collection>
         Token variable = Consume(TokenType.Identifier, "Expected a variable name after 'for'");
+        var body = new List<Statement>();
+        
+        // Check if it's a "for...in" loop
+        if (Check(TokenType.In))
+        {
+             // consume 'in'
+            Advance();
+            Expression collection = Expression();
+
+            while (!Check(TokenType.EndFor) && !IsAtEnd())
+            {
+                body.Add(Statement());
+            }
+
+            Consume(TokenType.EndFor, "Expected 'endfor' at the end of the for loop");
+
+            return new Statement.ForIn(variable, collection, body);
+        }
+
+        // Traditional "for...from...to" loop
         Consume(TokenType.From, "Expected 'from' after the variable name");
         
         Expression start = Expression();
@@ -98,7 +120,6 @@ public class Parser(List<Token> tokens)
             increment = Expression();
         }
 
-        var body = new List<Statement>();
         while (!Check(TokenType.EndFor) && !IsAtEnd())
         {
             body.Add(Statement());

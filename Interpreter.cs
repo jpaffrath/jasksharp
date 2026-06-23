@@ -102,6 +102,20 @@ public class Interpreter
                 }
                 break;
 
+            case Statement.ForIn fi:
+                object? collectionObj = Evaluate(fi.Collection);
+                if (collectionObj is not List<object?> list)
+                {
+                    throw new LangException($"'for...in' loop expects a list, but got '{GetValueType(collectionObj)}'", fi.Variable);
+                }
+
+                foreach (var item in list)
+                {
+                    CurrentEnvironment[fi.Variable.Lexeme] = item;
+                    foreach (var s in fi.Body) Execute(s);
+                }
+                break;
+
             case Statement.Function f:
                 _functions[f.Name.Lexeme] = (f.Params, f.Body);
                 break;

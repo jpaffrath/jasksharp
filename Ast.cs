@@ -22,6 +22,8 @@ public abstract record Statement
 
     public record For(Token Variable, JaskLang.Expression Start, JaskLang.Expression End, JaskLang.Expression? Increment, List<Statement> Body) : Statement;
 
+    public record ForIn(Token Variable, JaskLang.Expression Collection, List<Statement> Body) : Statement;
+
     public record Function(Token Name, List<(Token Name, Token Type)> Params, List<Statement> Body) : Statement;
 
     public record Expression(JaskLang.Expression Value) : Statement;
