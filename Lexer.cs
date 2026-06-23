@@ -124,8 +124,53 @@ public class Lexer
         // closing "
         Advance();
 
-        string value = _source.Substring(_start + 1, _current - _start - 2);
+        string rawValue = _source.Substring(_start + 1, _current - _start - 2);
+        string value = ProcessEscapeSequences(rawValue);
         AddToken(TokenType.String, value);
+    }
+
+    private string ProcessEscapeSequences(string str)
+    {
+        var result = new System.Text.StringBuilder();
+        
+        for (int i = 0; i < str.Length; i++)
+        {
+            if (str[i] == '\\' && i + 1 < str.Length)
+            {
+                switch (str[i + 1])
+                {
+                    case 'n':
+                        result.Append('\n');
+                        i++;
+                        break;
+                    case 't':
+                        result.Append('\t');
+                        i++;
+                        break;
+                    case 'r':
+                        result.Append('\r');
+                        i++;
+                        break;
+                    case '\\':
+                        result.Append('\\');
+                        i++;
+                        break;
+                    case '"':
+                        result.Append('"');
+                        i++;
+                        break;
+                    default:
+                        result.Append(str[i]);
+                        break;
+                }
+            }
+            else
+            {
+                result.Append(str[i]);
+            }
+        }
+        
+        return result.ToString();
     }
 
     private void ScanNumber()
