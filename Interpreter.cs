@@ -171,6 +171,8 @@ public class Interpreter
                 return CallInternalFunctionListAdd(call);
             case "listGet":
                 return CallInternalFunctionListGet(call);
+            case "exit":
+                return CallInternalFunctionExit(call);
             default:
                 break;
         }
@@ -335,6 +337,27 @@ public class Interpreter
         }
 
         return list[index];
+    }
+
+    private object? CallInternalFunctionExit(Expression.Call call)
+    {
+        if (call.Arguments.Count != 1)
+        {
+            Expression.Variable? funcExpr = call.Callee as Expression.Variable;
+            throw new LangException($"Function 'exit' expects 1 argument, but got {call.Arguments.Count}", funcExpr!.Name);
+        }
+
+        object? argValue = Evaluate(call.Arguments[0]);
+        if (argValue is not double d)
+        {
+            Expression.Variable? funcExpr = call.Callee as Expression.Variable;
+            throw new LangException($"Function 'exit' expects an integer argument, but got '{GetValueType(argValue)}'", funcExpr!.Name);
+        }
+
+        Environment.Exit((int)d);
+
+        // this line will never be reached
+        return null;
     }
 
     // Helper functions
