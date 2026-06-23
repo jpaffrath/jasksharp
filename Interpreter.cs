@@ -151,6 +151,12 @@ public class Interpreter
                 return CallInternalFunctionPrint(call);
             case "type":
                 return CallInternalFunctionType(call);
+            case "list":
+                return CallInternalFunctionList(call);
+            case "listAdd":
+                return CallInternalFunctionListAdd(call);
+            case "listGet":
+                return CallInternalFunctionListGet(call);
             default:
                 break;
         }
@@ -244,8 +250,80 @@ public class Interpreter
         return GetValueType(value);
     }
 
-    // Helper functions
+    private object? CallInternalFunctionList(Expression.Call call)
+    {
+        var list = new List<object?>();
 
+        foreach (var arg in call.Arguments)
+        {
+            list.Add(Evaluate(arg));
+        }
+
+        return list;
+    }
+
+    private object? CallInternalFunctionListAdd(Expression.Call call)
+    {
+        if (call.Arguments.Count < 2)
+        {
+            Expression.Variable? funcExpr = call.Callee as Expression.Variable;
+            throw new LangException($"Function 'listAdd' expects at least 2 arguments, but got {call.Arguments.Count}", funcExpr!.Name);
+        }
+
+        // first argument must be a list
+        object? listObj = Evaluate(call.Arguments[0]);
+        if (listObj is not List<object?> list)
+        {
+            Expression.Variable? funcExpr = call.Callee as Expression.Variable;
+            throw new LangException($"Function 'listAdd' expects first argument to be a list, but got '{GetValueType(listObj)}'", funcExpr!.Name);
+        }
+
+        // create a copy of the list to avoid modifying the original
+        var newList = list.ToList();
+
+        // add arguments to the list
+        for (int i = 1; i < call.Arguments.Count; i++)
+        {   
+            object? value = Evaluate(call.Arguments[i]);
+            newList.Add(value);
+        }
+
+        return newList;
+    }
+
+    private object? CallInternalFunctionListGet(Expression.Call call)
+    {
+        if (call.Arguments.Count != 2)
+        {
+            Expression.Variable? funcExpr = call.Callee as Expression.Variable;
+            throw new LangException($"Function 'listGet' expects 2 arguments, but got {call.Arguments.Count}", funcExpr!.Name);
+        }
+
+        object? listObj = Evaluate(call.Arguments[0]);
+        if (listObj is not List<object?> list)
+        {
+            Expression.Variable? funcExpr = call.Callee as Expression.Variable;
+            throw new LangException($"Function 'listGet' expects first argument to be a list, but got '{GetValueType(listObj)}'", funcExpr!.Name);
+        }
+
+        object? indexObj = Evaluate(call.Arguments[1]);
+        if (indexObj is not double indexDouble)
+        {
+            Expression.Variable? funcExpr = call.Callee as Expression.Variable;
+            throw new LangException($"Function 'listGet' expects second argument to be a number, but got '{GetValueType(indexObj)}'", funcExpr!.Name);
+        }
+
+        int index = (int)indexDouble;
+        if (index < 0 || index >= list.Count)
+        {
+            Expression.Variable? funcExpr = call.Callee as Expression.Variable;
+            throw new LangException($"Function 'listGet' index {index} is out of bounds for list of size {list.Count}", funcExpr!.Name);
+        }
+
+        return list[index];
+    }
+
+    // Helper functions
     private static bool IsValueOfType(object? value, string typeName)
     {
         return typeName.ToLower() switch
@@ -253,6 +331,7 @@ public class Interpreter
             "number" => value is double,
             "string" => value is string,
             "bool" => value is bool,
+            "list" => value is List<object?>,
             _ => throw new LangException($"Unknown type '{typeName}'.")
         };
     }
@@ -264,6 +343,7 @@ public class Interpreter
             double => "number",
             string => "string",
             bool => "bool",
+            List<object?> => "list",
             null => "nil",
             _ => value.GetType().Name
         };
@@ -394,6 +474,12 @@ public class Interpreter
             }
 
             return d.ToString(System.Globalization.CultureInfo.InvariantCulture);
+        }
+
+        if (value is List<object?> list)
+        {
+            var elements = list.Select(Stringify).ToList();
+            return "[" + string.Join(", ", elements) + "]";
         }
 
         return value.ToString() ?? "nil";
