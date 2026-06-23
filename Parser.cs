@@ -303,6 +303,6 @@ public class Parser(List<Token> tokens)
     private LangException Error(Token token, string message)
     {
         string where = token.Type == TokenType.Eof ? "at the end of the file" : $"at '{token.Lexeme}'";
-        return new LangException($"[Line {token.Line}] Syntax Error {where}: {message}");
+        return new LangException($"Syntax Error {where}: {message}", token);
     }
 }

@@ -71,11 +71,11 @@ public class Lexer
                 break;
             case '=':
                 if (Match('=')) AddToken(TokenType.EqualEqual);
-                else throw new LangException($"[Row {_line}] Unknown character '='. Did you mean '=='?");
+                else throw new LangException("Unknown character '='. Did you mean '=='?", _line);
                 break;
             case '!':
                 if (Match('=')) AddToken(TokenType.BangEqual);
-                else throw new LangException($"[Row {_line}] Unexpected character '!'.");
+                else throw new LangException("Unexpected character '!'.", _line);
                 break;
             case '<':
                 AddToken(Match('=') ? TokenType.LessEqual : TokenType.Less);
@@ -104,7 +104,7 @@ public class Lexer
                 }
                 else
                 {
-                    throw new LangException($"[Row {_line}] Unknown character '{c}'.");
+                    throw new LangException($"Unknown character '{c}'.", _line);
                 }
                 break;
         }
@@ -119,7 +119,7 @@ public class Lexer
         }
 
         if (IsAtEnd())
-            throw new LangException($"[Row {_line}] Unclosed string.");
+            throw new LangException("Unclosed string.", _line);
 
         // closing "
         Advance();

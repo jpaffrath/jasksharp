@@ -157,14 +157,14 @@ public class Interpreter
 
         if (_functions.TryGetValue(funcName, out var funcDef) == false)
         {
-            throw new LangException($"[Row {funcExpr.Name.Line}] Unknown function '{funcName}'");
+            throw new LangException($"Unknown function '{funcName}'", funcExpr.Name);
         }
 
         var (parameters, body) = funcDef;
 
         if (call.Arguments.Count != parameters.Count)
         {
-            throw new LangException($"Function '{funcName}' expects {parameters.Count} arguments, but got {call.Arguments.Count}");
+            throw new LangException($"Function '{funcName}' expects {parameters.Count} arguments, but got {call.Arguments.Count}", funcExpr.Name);
         }
 
         // create a new environment for the function call
@@ -181,7 +181,7 @@ public class Interpreter
             {
                 string expectedType = paramType;
                 string actualType = GetValueType(argValue);
-                throw new LangException($"[Row {funcExpr.Name.Line}] Function '{funcName}': Parameter '{parameters[i].Name.Lexeme}' expects type '{expectedType}', but got '{actualType}'");
+                throw new LangException($"Function '{funcName}': Parameter '{parameters[i].Name.Lexeme}' expects type '{expectedType}', but got '{actualType}'", funcExpr.Name);
             }
 
             functionEnv[parameters[i].Name.Lexeme] = argValue;
@@ -216,7 +216,7 @@ public class Interpreter
         if (call.Arguments.Count < 1)
         {
             Expression.Variable? funcExpr = call.Callee as Expression.Variable;
-            throw new LangException($"[Row {funcExpr.Name.Line}] Function 'print' expects at least 1 argument, but got {call.Arguments.Count}");
+            throw new LangException($"Function 'print' expects at least 1 argument, but got {call.Arguments.Count}", funcExpr!.Name);
         }
 
         // print all arguments
@@ -236,7 +236,7 @@ public class Interpreter
         if (call.Arguments.Count != 1)
         {
             Expression.Variable? funcExpr = call.Callee as Expression.Variable;
-            throw new LangException($"[Row {funcExpr.Name.Line}] Function 'type' expects 1 argument, but got {call.Arguments.Count}");
+            throw new LangException($"Function 'type' expects 1 argument, but got {call.Arguments.Count}", funcExpr!.Name);
         }
         
         object? value = Evaluate(call.Arguments[0]);
@@ -272,7 +272,7 @@ public class Interpreter
     private object? LookupVariable(Token name)
     {
         if (CurrentEnvironment.TryGetValue(name.Lexeme, out var value)) return value;
-        throw new LangException($"[Zeile {name.Line}] Unknown variable '{name.Lexeme}'.");
+        throw new LangException($"Unknown variable '{name.Lexeme}'.", name);
     }
 
     private object EvaluateUnary(Expression.Unary u)
@@ -281,7 +281,7 @@ public class Interpreter
         return u.Op.Type switch
         {
             TokenType.Minus => -CheckNumber(u.Op, right),
-            _ => throw new LangException($"Unknown unary operator '{u.Op.Lexeme}'.")
+            _ => throw new LangException($"Unknown unary operator '{u.Op.Lexeme}'.", u.Op)
         };
     }
 
@@ -313,13 +313,13 @@ public class Interpreter
                 double divisor = CheckNumber(b.Op, right);
                 if (divisor == 0)
                 {
-                    throw new LangException($"[Row {b.Op.Line}] Division by zero");
+                    throw new LangException("Division by zero", b.Op);
                 }
 
                 return CheckNumber(b.Op, left) / divisor;
 
             default:
-                throw new LangException($"Unknown operator '{b.Op.Lexeme}'");
+                throw new LangException($"Unknown operator '{b.Op.Lexeme}'", b.Op);
         }
     }
 
@@ -330,7 +330,7 @@ public class Interpreter
             return d;
         }
 
-        throw new LangException($"[Row {op.Line}] Operator '{op.Lexeme}' expects a number, but received '{Stringify(value)}'");
+        throw new LangException($"Operator '{op.Lexeme}' expects a number, but received '{Stringify(value)}'", op);
     }
 
     private static double CheckNumberStmt(Token context, object? value, string label)
@@ -340,7 +340,7 @@ public class Interpreter
             return d;
         }
 
-        throw new LangException($"[Row {context.Line}] {label} must be a number, but is a '{Stringify(value)}'");
+        throw new LangException($"{label} must be a number, but is a '{Stringify(value)}'", context);
     }
 
     private static bool IsTruthy(object? value)
