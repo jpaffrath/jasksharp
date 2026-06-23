@@ -173,6 +173,8 @@ public class Interpreter
                 return CallInternalFunctionListGet(call);
             case "clock":
                 return CallInternalFunctionClock(call);
+            case "readInput":
+                return CallInternalFunctionReadInput(call);
             case "exit":
                 return CallInternalFunctionExit(call);
             default:
@@ -350,6 +352,24 @@ public class Interpreter
         }
 
         return DateTimeOffset.UtcNow.ToUnixTimeMilliseconds() / 1000.0;
+    }
+
+    private object? CallInternalFunctionReadInput(Expression.Call call)
+    {
+        if (call.Arguments.Count > 1)
+        {
+            Expression.Variable? funcExpr = call.Callee as Expression.Variable;
+            throw new LangException($"Function 'readInput' expects 0 or 1 argument, but got {call.Arguments.Count}", funcExpr!.Name);
+        }
+
+        // if there's one argument, print it as a prompt
+        if (call.Arguments.Count == 1)
+        {
+            object? promptValue = Evaluate(call.Arguments[0]);
+            Console.Write(Stringify(promptValue));
+        }
+
+        return Console.ReadLine();
     }
 
     private object? CallInternalFunctionExit(Expression.Call call)
