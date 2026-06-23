@@ -402,6 +402,7 @@ public class Interpreter
             "string" => value is string,
             "bool" => value is bool,
             "list" => value is List<object?>,
+            "any" => value is object,
             _ => throw new LangException($"Unknown type '{typeName}'.")
         };
     }
