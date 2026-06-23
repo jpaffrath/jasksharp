@@ -171,6 +171,8 @@ public class Interpreter
                 return CallInternalFunctionListAdd(call);
             case "listGet":
                 return CallInternalFunctionListGet(call);
+            case "clock":
+                return CallInternalFunctionClock(call);
             case "exit":
                 return CallInternalFunctionExit(call);
             default:
@@ -337,6 +339,17 @@ public class Interpreter
         }
 
         return list[index];
+    }
+
+    private object? CallInternalFunctionClock(Expression.Call call)
+    {
+        if (call.Arguments.Count != 0)
+        {
+            Expression.Variable? funcExpr = call.Callee as Expression.Variable;
+            throw new LangException($"Function 'clock' expects 0 arguments, but got {call.Arguments.Count}", funcExpr!.Name);
+        }
+
+        return DateTimeOffset.UtcNow.ToUnixTimeMilliseconds() / 1000.0;
     }
 
     private object? CallInternalFunctionExit(Expression.Call call)
