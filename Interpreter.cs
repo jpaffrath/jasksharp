@@ -139,41 +139,25 @@ public class Interpreter
     {
         Expression.Variable? funcExpr = call.Callee as Expression.Variable;
         if (funcExpr == null)
+        {
             throw new LangException("Can only call functions by name");
+        }
 
         string funcName = funcExpr.Name.Lexeme;
 
-        // type() function
-        if (funcName == "type")
+        switch (funcName)
         {
-            if (call.Arguments.Count != 1)
-                throw new LangException($"Function 'type' expects 1 argument, but got {call.Arguments.Count}");
-            
-            object? value = Evaluate(call.Arguments[0]);
-            return GetValueType(value);
-        }
-
-        // print() function
-        if (funcName == "print")
-        {
-            if (call.Arguments.Count < 1)
-                throw new LangException($"Function 'print' expects at least 1 argument, but got {call.Arguments.Count}");
-            
-            // print all arguments
-            var parts = new List<string>();
-            foreach (var arg in call.Arguments)
-            {
-                parts.Add(Stringify(Evaluate(arg)));
-            }
-            Console.Write(string.Join("", parts));
-
-            // print returns jask nil
-            return null;
+            case "print":
+                return CallInternalFunctionPrint(call);
+            case "type":
+                return CallInternalFunctionType(call);
+            default:
+                break;
         }
 
         if (_functions.TryGetValue(funcName, out var funcDef) == false)
         {
-            throw new LangException($"[Zeile {funcExpr.Name.Line}] Unknown function '{funcName}'");
+            throw new LangException($"[Row {funcExpr.Name.Line}] Unknown function '{funcName}'");
         }
 
         var (parameters, body) = funcDef;
@@ -197,7 +181,7 @@ public class Interpreter
             {
                 string expectedType = paramType;
                 string actualType = GetValueType(argValue);
-                throw new LangException($"[Zeile {funcExpr.Name.Line}] Function '{funcName}': Parameter '{parameters[i].Name.Lexeme}' expects type '{expectedType}', but got '{actualType}'");
+                throw new LangException($"[Row {funcExpr.Name.Line}] Function '{funcName}': Parameter '{parameters[i].Name.Lexeme}' expects type '{expectedType}', but got '{actualType}'");
             }
 
             functionEnv[parameters[i].Name.Lexeme] = argValue;
@@ -224,6 +208,43 @@ public class Interpreter
         // function returns nil
         return null;
     }
+
+    // Internal functions
+
+    private object? CallInternalFunctionPrint(Expression.Call call)
+    {
+        if (call.Arguments.Count < 1)
+        {
+            Expression.Variable? funcExpr = call.Callee as Expression.Variable;
+            throw new LangException($"[Row {funcExpr.Name.Line}] Function 'print' expects at least 1 argument, but got {call.Arguments.Count}");
+        }
+
+        // print all arguments
+        var parts = new List<string>();
+        foreach (var arg in call.Arguments)
+        {
+            parts.Add(Stringify(Evaluate(arg)));
+        }
+
+        Console.Write(string.Join("", parts));
+
+        return null;
+    }
+
+    private object? CallInternalFunctionType(Expression.Call call)
+    {
+        if (call.Arguments.Count != 1)
+        {
+            Expression.Variable? funcExpr = call.Callee as Expression.Variable;
+            throw new LangException($"[Row {funcExpr.Name.Line}] Function 'type' expects 1 argument, but got {call.Arguments.Count}");
+        }
+        
+        object? value = Evaluate(call.Arguments[0]);
+
+        return GetValueType(value);
+    }
+
+    // Helper functions
 
     private static bool IsValueOfType(object? value, string typeName)
     {
