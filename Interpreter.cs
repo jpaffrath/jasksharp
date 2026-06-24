@@ -45,13 +45,14 @@ public class Interpreter
         _internalFunctions["exit"]  = CallInternalFunctionExit;
 
         // list functions
-        _internalFunctions["list"]        = CallInternalFunctionList;
-        _internalFunctions["listSize"]    = CallInternalFunctionListSize;
-        _internalFunctions["listAdd"]     = CallInternalFunctionListAdd;
-        _internalFunctions["listGet"]     = CallInternalFunctionListGet;
-        _internalFunctions["listSet"]     = CallInternalFunctionListSet;
-        _internalFunctions["listRemove"]  = CallInternalFunctionListRemove;
-        _internalFunctions["listReverse"] = CallInternalFunctionListReverse;
+        _internalFunctions["list"]         = CallInternalFunctionList;
+        _internalFunctions["listSize"]     = CallInternalFunctionListSize;
+        _internalFunctions["listAdd"]      = CallInternalFunctionListAdd;
+        _internalFunctions["listGet"]      = CallInternalFunctionListGet;
+        _internalFunctions["listGetRange"] = CallInternalFunctionListGetRange;
+        _internalFunctions["listSet"]      = CallInternalFunctionListSet;
+        _internalFunctions["listRemove"]   = CallInternalFunctionListRemove;
+        _internalFunctions["listReverse"]  = CallInternalFunctionListReverse;
 
         // IO functions
         _internalFunctions["readInput"] = CallInternalFunctionReadInput; 
@@ -393,6 +394,47 @@ public class Interpreter
         }
 
         return list[index];
+    }
+
+    private object? CallInternalFunctionListGetRange(Expression.Call call)
+    {
+        if (call.Arguments.Count != 3)
+        {
+            Expression.Variable? funcExpr = call.Callee as Expression.Variable;
+            throw new LangException($"Function 'listGetRange' expects 3 arguments, but got {call.Arguments.Count}", funcExpr!.Name);
+        }
+
+        object? listObj = Evaluate(call.Arguments[0]);
+        if (listObj is not List<object?> list)
+        {
+            Expression.Variable? funcExpr = call.Callee as Expression.Variable;
+            throw new LangException($"Function 'listGetRange' expects first argument to be a list, but got '{GetValueType(listObj)}'", funcExpr!.Name);
+        }
+
+        object? startIndexObj = Evaluate(call.Arguments[1]);
+        if (startIndexObj is not double startIndexDouble)
+        {
+            Expression.Variable? funcExpr = call.Callee as Expression.Variable;
+            throw new LangException($"Function 'listGetRange' expects second argument to be a number, but got '{GetValueType(startIndexObj)}'", funcExpr!.Name);
+        }
+
+        object? endIndexObj = Evaluate(call.Arguments[2]);
+        if (endIndexObj is not double endIndexDouble)
+        {
+            Expression.Variable? funcExpr = call.Callee as Expression.Variable;
+            throw new LangException($"Function 'listGetRange' expects third argument to be a number, but got '{GetValueType(endIndexObj)}'", funcExpr!.Name);
+        }
+
+        int startIndex = (int)startIndexDouble;
+        int endIndex = (int)endIndexDouble;
+
+        if (startIndex < 0 || endIndex >= list.Count || startIndex > endIndex)
+        {
+            Expression.Variable? funcExpr = call.Callee as Expression.Variable;
+            throw new LangException($"Function 'listGetRange' indices [{startIndex}, {endIndex}] are out of bounds for list of size {list.Count}", funcExpr!.Name);
+        }
+
+        return list.GetRange(startIndex, endIndex - startIndex + 1);
     }
 
     private object? CallInternalFunctionListSet(Expression.Call call)
