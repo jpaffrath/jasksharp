@@ -6,10 +6,15 @@ public class ReturnException : Exception
     public ReturnException(object? value) : base() { Value = value; }
 }
 
+public delegate object? InternalFunctionDelegate(Expression.Call call);
+
 public class Interpreter
 {
     // dictionary for functions: name -> (parameters, body)
     private readonly Dictionary<string, (List<(Token Name, Token Type)> Params, List<Statement> Body)> _functions = [];
+
+    // dictionary for internal functions: name -> delegate
+    private readonly Dictionary<string, InternalFunctionDelegate> _internalFunctions = [];
 
     // stack for environments to manage scopes
     private readonly Stack<Dictionary<string, object?>> _scopes = new();
@@ -20,6 +25,7 @@ public class Interpreter
     public Interpreter()
     {
         _scopes.Push(_globalEnvironment);
+        initInternalFunctions();
     }
 
     public void Interpret(List<Statement> statements)
@@ -28,6 +34,21 @@ public class Interpreter
         {
             Execute(statement);
         }
+    }
+
+    private void initInternalFunctions()
+    {
+        _internalFunctions["print"]      = CallInternalFunctionPrint;
+        _internalFunctions["type"]       = CallInternalFunctionType;
+        _internalFunctions["list"]       = CallInternalFunctionList;
+        _internalFunctions["listSize"]   = CallInternalFunctionListSize;
+        _internalFunctions["listAdd"]    = CallInternalFunctionListAdd;
+        _internalFunctions["listGet"]    = CallInternalFunctionListGet;
+        _internalFunctions["listSet"]    = CallInternalFunctionListSet;
+        _internalFunctions["listRemove"] = CallInternalFunctionListRemove;
+        _internalFunctions["clock"]      = CallInternalFunctionClock;
+        _internalFunctions["readInput"]  = CallInternalFunctionReadInput;
+        _internalFunctions["exit"]       = CallInternalFunctionExit;
     }
 
     private void Execute(Statement statement)
@@ -183,32 +204,9 @@ public class Interpreter
 
         string funcName = funcExpr.Name.Lexeme;
 
-        switch (funcName)
+        if (_internalFunctions.TryGetValue(funcName, out var internalFunc))
         {
-            case "print":
-                return CallInternalFunctionPrint(call);
-            case "type":
-                return CallInternalFunctionType(call);
-            case "list":
-                return CallInternalFunctionList(call);
-            case "listSize":
-                return CallInternalFunctionListSize(call);
-            case "listAdd":
-                return CallInternalFunctionListAdd(call);
-            case "listGet":
-                return CallInternalFunctionListGet(call);
-            case "listSet":
-                return CallInternalFunctionListSet(call);
-            case "listRemove":
-                return CallInternalFunctionListRemove(call);
-            case "clock":
-                return CallInternalFunctionClock(call);
-            case "readInput":
-                return CallInternalFunctionReadInput(call);
-            case "exit":
-                return CallInternalFunctionExit(call);
-            default:
-                break;
+            return internalFunc(call);
         }
 
         if (_functions.TryGetValue(funcName, out var funcDef) == false)
