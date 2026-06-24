@@ -191,10 +191,16 @@ public class Interpreter
                 return CallInternalFunctionType(call);
             case "list":
                 return CallInternalFunctionList(call);
+            case "listSize":
+                return CallInternalFunctionListSize(call);
             case "listAdd":
                 return CallInternalFunctionListAdd(call);
             case "listGet":
                 return CallInternalFunctionListGet(call);
+            case "listSet":
+                return CallInternalFunctionListSet(call);
+            case "listRemove":
+                return CallInternalFunctionListRemove(call);
             case "clock":
                 return CallInternalFunctionClock(call);
             case "readInput":
@@ -306,6 +312,24 @@ public class Interpreter
         return list;
     }
 
+    private object? CallInternalFunctionListSize(Expression.Call call)
+    {
+        if (call.Arguments.Count != 1)
+        {
+            Expression.Variable? funcExpr = call.Callee as Expression.Variable;
+            throw new LangException($"Function 'listSize' expects 1 argument, but got {call.Arguments.Count}", funcExpr!.Name);
+        }
+
+        object? listObj = Evaluate(call.Arguments[0]);
+        if (listObj is not List<object?> list)
+        {
+            Expression.Variable? funcExpr = call.Callee as Expression.Variable;
+            throw new LangException($"Function 'listSize' expects a list, but got '{GetValueType(listObj)}'", funcExpr!.Name);
+        }
+
+        return list.Count;
+    }
+
     private object? CallInternalFunctionListAdd(Expression.Call call)
     {
         if (call.Arguments.Count < 2)
@@ -365,6 +389,80 @@ public class Interpreter
         }
 
         return list[index];
+    }
+
+    private object? CallInternalFunctionListSet(Expression.Call call)
+    {
+        if (call.Arguments.Count != 3)
+        {
+            Expression.Variable? funcExpr = call.Callee as Expression.Variable;
+            throw new LangException($"Function 'listSet' expects 3 arguments, but got {call.Arguments.Count}", funcExpr!.Name);
+        }
+
+        object? listObj = Evaluate(call.Arguments[0]);
+        if (listObj is not List<object?> list)
+        {
+            Expression.Variable? funcExpr = call.Callee as Expression.Variable;
+            throw new LangException($"Function 'listSet' expects first argument to be a list, but got '{GetValueType(listObj)}'", funcExpr!.Name);
+        }
+
+        object? indexObj = Evaluate(call.Arguments[1]);
+        if (indexObj is not double indexDouble)
+        {
+            Expression.Variable? funcExpr = call.Callee as Expression.Variable;
+            throw new LangException($"Function 'listSet' expects second argument to be a number, but got '{GetValueType(indexObj)}'", funcExpr!.Name);
+        }
+
+        int index = (int)indexDouble;
+        if (index < 0 || index >= list.Count)
+        {
+            Expression.Variable? funcExpr = call.Callee as Expression.Variable;
+            throw new LangException($"Function 'listSet' index {index} is out of bounds for list of size {list.Count}", funcExpr!.Name);
+        }
+
+        object? value = Evaluate(call.Arguments[2]);
+
+        // create a copy of the list to avoid modifying the original
+        var newList = list.ToList();
+        newList[index] = value;
+
+        return newList;
+    }
+
+    private object? CallInternalFunctionListRemove(Expression.Call call)
+    {
+        if (call.Arguments.Count != 2)
+        {
+            Expression.Variable? funcExpr = call.Callee as Expression.Variable;
+            throw new LangException($"Function 'listRemove' expects 2 arguments, but got {call.Arguments.Count}", funcExpr!.Name);
+        }
+
+        object? listObj = Evaluate(call.Arguments[0]);
+        if (listObj is not List<object?> list)
+        {
+            Expression.Variable? funcExpr = call.Callee as Expression.Variable;
+            throw new LangException($"Function 'listRemove' expects first argument to be a list, but got '{GetValueType(listObj)}'", funcExpr!.Name);
+        }
+
+        object? indexObj = Evaluate(call.Arguments[1]);
+        if (indexObj is not double indexDouble)
+        {
+            Expression.Variable? funcExpr = call.Callee as Expression.Variable;
+            throw new LangException($"Function 'listRemove' expects second argument to be a number, but got '{GetValueType(indexObj)}'", funcExpr!.Name);
+        }
+
+        int index = (int)indexDouble;
+        if (index < 0 || index >= list.Count)
+        {
+            Expression.Variable? funcExpr = call.Callee as Expression.Variable;
+            throw new LangException($"Function 'listRemove' index {index} is out of bounds for list of size {list.Count}", funcExpr!.Name);
+        }
+
+        // create a copy of the list to avoid modifying the original
+        var newList = list.ToList();
+        newList.RemoveAt(index);
+
+        return newList;
     }
 
     private object? CallInternalFunctionClock(Expression.Call call)
