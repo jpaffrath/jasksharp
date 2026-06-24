@@ -38,17 +38,23 @@ public class Interpreter
 
     private void initInternalFunctions()
     {
-        _internalFunctions["print"]      = CallInternalFunctionPrint;
-        _internalFunctions["type"]       = CallInternalFunctionType;
-        _internalFunctions["list"]       = CallInternalFunctionList;
-        _internalFunctions["listSize"]   = CallInternalFunctionListSize;
-        _internalFunctions["listAdd"]    = CallInternalFunctionListAdd;
-        _internalFunctions["listGet"]    = CallInternalFunctionListGet;
-        _internalFunctions["listSet"]    = CallInternalFunctionListSet;
-        _internalFunctions["listRemove"] = CallInternalFunctionListRemove;
-        _internalFunctions["clock"]      = CallInternalFunctionClock;
-        _internalFunctions["readInput"]  = CallInternalFunctionReadInput;
-        _internalFunctions["exit"]       = CallInternalFunctionExit;
+        // standard functions
+        _internalFunctions["print"] = CallInternalFunctionPrint;
+        _internalFunctions["type"]  = CallInternalFunctionType;
+        _internalFunctions["clock"] = CallInternalFunctionClock;
+        _internalFunctions["exit"]  = CallInternalFunctionExit;
+
+        // list functions
+        _internalFunctions["list"]        = CallInternalFunctionList;
+        _internalFunctions["listSize"]    = CallInternalFunctionListSize;
+        _internalFunctions["listAdd"]     = CallInternalFunctionListAdd;
+        _internalFunctions["listGet"]     = CallInternalFunctionListGet;
+        _internalFunctions["listSet"]     = CallInternalFunctionListSet;
+        _internalFunctions["listRemove"]  = CallInternalFunctionListRemove;
+        _internalFunctions["listReverse"] = CallInternalFunctionListReverse;
+
+        // IO functions
+        _internalFunctions["readInput"] = CallInternalFunctionReadInput; 
     }
 
     private void Execute(Statement statement)
@@ -459,6 +465,28 @@ public class Interpreter
         // create a copy of the list to avoid modifying the original
         var newList = list.ToList();
         newList.RemoveAt(index);
+
+        return newList;
+    }
+
+    private object? CallInternalFunctionListReverse(Expression.Call call)
+    {
+        if (call.Arguments.Count != 1)
+        {
+            Expression.Variable? funcExpr = call.Callee as Expression.Variable;
+            throw new LangException($"Function 'listReverse' expects 1 argument, but got {call.Arguments.Count}", funcExpr!.Name);
+        }
+
+        object? listObj = Evaluate(call.Arguments[0]);
+        if (listObj is not List<object?> list)
+        {
+            Expression.Variable? funcExpr = call.Callee as Expression.Variable;
+            throw new LangException($"Function 'listReverse' expects first argument to be a list, but got '{GetValueType(listObj)}'", funcExpr!.Name);
+        }
+
+        // create a copy of the list to avoid modifying the original
+        var newList = list.ToList();
+        newList.Reverse();
 
         return newList;
     }
