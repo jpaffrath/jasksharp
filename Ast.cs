@@ -28,5 +28,7 @@ public abstract record Statement
 
     public record Expression(JaskLang.Expression Value) : Statement;
 
+    public record Use(JaskLang.Expression Value) : Statement;
+
     public record Return(JaskLang.Expression? Value) : Statement;
 }

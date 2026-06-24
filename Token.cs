@@ -23,6 +23,7 @@ public enum TokenType
     True,
     False,
     Function,
+    Use,
     End,
     Return,
 

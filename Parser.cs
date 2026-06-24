@@ -24,6 +24,7 @@ public class Parser(List<Token> tokens)
         if (Match(TokenType.While))    return WhileStatement();
         if (Match(TokenType.For))      return ForStatement();
         if (Match(TokenType.Function)) return FunctionStatement();
+        if (Match(TokenType.Use))      return UseStatement();
         if (Match(TokenType.Return))   return ReturnStatement();
 
         // try to parse as expression statement
@@ -160,6 +161,12 @@ public class Parser(List<Token> tokens)
         Consume(TokenType.End, "Expected 'end' at the end of the function");
 
         return new Statement.Function(name, parameters, body);
+    }
+
+    private Statement UseStatement()
+    {
+        Expression modulePath = Expression();
+        return new Statement.Use(modulePath);
     }
 
     private Statement ReturnStatement()

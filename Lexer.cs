@@ -25,6 +25,7 @@ public class Lexer
         ["true"]     = TokenType.True,
         ["false"]    = TokenType.False,
         ["function"] = TokenType.Function,
+        ["use"]      = TokenType.Use,
         ["end"]      = TokenType.End,
         ["return"]   = TokenType.Return,
     };

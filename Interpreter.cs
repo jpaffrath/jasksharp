@@ -124,6 +124,30 @@ public class Interpreter
                 Evaluate(e.Value);
                 break;
 
+            case Statement.Use u:
+                object? value = Evaluate(u.Value);
+
+                if (value is not string)
+                {
+                    throw new LangException($"'use' statement expects a string as module path, but got '{GetValueType(value)}'");
+                }
+
+                string modulePath = (string)value;
+
+                if (File.Exists(modulePath) == false)
+                {
+                    throw new LangException($"Module at '{modulePath}' could not be loaded");
+                }
+                else
+                {
+                    var lexer = new Lexer(File.ReadAllText(modulePath));
+                    var tokens = lexer.ScanTokens();
+                    var parser = new Parser(tokens);
+                    var statements = parser.Parse();
+                    Interpret(statements);
+                }
+                break;
+
             case Statement.Return r:
                 object? returnValue = r.Value != null ? Evaluate(r.Value) : null;
                 throw new ReturnException(returnValue);
