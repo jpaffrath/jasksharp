@@ -53,6 +53,7 @@ public class Interpreter
         _internalFunctions["listSet"]      = CallInternalFunctionListSet;
         _internalFunctions["listRemove"]   = CallInternalFunctionListRemove;
         _internalFunctions["listReverse"]  = CallInternalFunctionListReverse;
+        _internalFunctions["listExtend"]   = CallInternalFunctionListExtend;
 
         // IO functions
         _internalFunctions["readInput"] = CallInternalFunctionReadInput; 
@@ -529,6 +530,35 @@ public class Interpreter
         // create a copy of the list to avoid modifying the original
         var newList = list.ToList();
         newList.Reverse();
+
+        return newList;
+    }
+
+    private object? CallInternalFunctionListExtend(Expression.Call call)
+    {
+        if (call.Arguments.Count != 2)
+        {
+            Expression.Variable? funcExpr = call.Callee as Expression.Variable;
+            throw new LangException($"Function 'listExtend' expects 2 arguments, but got {call.Arguments.Count}", funcExpr!.Name);
+        }
+
+        object? listObj1 = Evaluate(call.Arguments[0]);
+        if (listObj1 is not List<object?> list1)
+        {
+            Expression.Variable? funcExpr = call.Callee as Expression.Variable;
+            throw new LangException($"Function 'listExtend' expects first argument to be a list, but got '{GetValueType(listObj1)}'", funcExpr!.Name);
+        }
+
+        object? listObj2 = Evaluate(call.Arguments[1]);
+        if (listObj2 is not List<object?> list2)
+        {
+            Expression.Variable? funcExpr = call.Callee as Expression.Variable;
+            throw new LangException($"Function 'listExtend' expects second argument to be a list, but got '{GetValueType(listObj2)}'", funcExpr!.Name);
+        }
+
+        // create a copy of the first list to avoid modifying the original
+        var newList = list1.ToList();
+        newList.AddRange(list2);
 
         return newList;
     }
