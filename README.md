@@ -29,14 +29,14 @@ store 100 to myNum
 store "Test" to myNum
 ```
 
-## Arithmetic has been simplified and calculations has been enhanced
+## Arithmetic has been simplified and calculations have been enhanced
 In jask version 1.0.0, one has to use the keywords plus, minus, divide, etc. for simple arithmetic calculations.
 This has been changed vor a better readability:
 ```pseudo
 store 100 * 2.123 in myNum
 store myNum / myNum in result
 ```
-Additionally, arithmetic operations in jask 1.0.0 were heavily limited. Version 2.0.0 allows complex statements:
+Additionally, arithmetic operations in jask 1.0.0 were heavily limited. Version 2.0.0 allows complex statements, which takes into account the correct mathematical order of operators:
 ```pseudo
 store 2 + 2.123 * (2.3 + 4 / 5) in myNum
 store myNum / myNum in result
