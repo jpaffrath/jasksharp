@@ -230,7 +230,8 @@ public class Parser(List<Token> tokens)
     {
         Expression expr = Unary();
 
-        while (Match(TokenType.Star, TokenType.Slash))
+        // modulo has the same priority as multiplication and division
+        while (Match(TokenType.Star, TokenType.Slash, TokenType.Modulo))
         {
             Token op = Previous();
             Expression right = Unary();

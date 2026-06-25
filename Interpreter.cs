@@ -674,6 +674,7 @@ public class Interpreter
 
             case TokenType.Minus:        return CheckNumber(b.Op, left) - CheckNumber(b.Op, right);
             case TokenType.Star:         return CheckNumber(b.Op, left) * CheckNumber(b.Op, right);
+            case TokenType.Modulo:       return CheckNumber(b.Op, left) % CheckNumber(b.Op, right);
             case TokenType.Greater:      return CheckNumber(b.Op, left) > CheckNumber(b.Op, right);
             case TokenType.GreaterEqual: return CheckNumber(b.Op, left) >= CheckNumber(b.Op, right);
             case TokenType.Less:         return CheckNumber(b.Op, left) < CheckNumber(b.Op, right);

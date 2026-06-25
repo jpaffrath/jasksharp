@@ -59,6 +59,7 @@ public class Lexer
             case '+': AddToken(TokenType.Plus); break;
             case '-': AddToken(TokenType.Minus); break;
             case '*': AddToken(TokenType.Star); break;
+            case '%': AddToken(TokenType.Modulo); break;
             case '/': AddToken(TokenType.Slash); break;
             case ';':
                 // ignore comments until the end of the line

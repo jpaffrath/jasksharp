@@ -32,6 +32,7 @@ public enum TokenType
     Minus,
     Star,
     Slash,
+    Modulo,
     LParen,
     RParen,
     Colon,
