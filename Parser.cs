@@ -24,6 +24,7 @@ public class Parser(List<Token> tokens)
         if (Match(TokenType.While))    return WhileStatement();
         if (Match(TokenType.For))      return ForStatement();
         if (Match(TokenType.Function)) return FunctionStatement();
+        if (Match(TokenType.Struct))   return StructStatement();
         if (Match(TokenType.Use))      return UseStatement();
         if (Match(TokenType.Return))   return ReturnStatement();
 
@@ -33,11 +34,29 @@ public class Parser(List<Token> tokens)
 
     private Statement StoreStatement()
     {
-        Expression value = Expression();
+        Expression source = Expression();
+
+        // struct update: store <source> update <field> = <value> in <target>
+        if (Check(TokenType.Update))
+        {
+            var updates = new List<(Token Field, Expression Value)>();
+
+            while (Match(TokenType.Update))
+            {
+                Token field = Consume(TokenType.Identifier, "Expected a field name after 'update'");
+                Consume(TokenType.Assign, "Expected '=' after field name in update");
+                Expression value = Expression();
+                updates.Add((field, value));
+            }
+
+            Consume(TokenType.In, "Expected 'in' after update clause");
+            Token target = Consume(TokenType.Identifier, "Expected a variable name after 'in'");
+            return new Statement.StructUpdate(source, updates, target);
+        }
+
         Consume(TokenType.In, "Expected 'in' after value of a store instruction");
         Token name = Consume(TokenType.Identifier, "Expected a variable name after 'in'");
-
-        return new Statement.Store(name, value);
+        return new Statement.Store(name, source);
     }
 
     private Statement IfStatement()
@@ -163,6 +182,21 @@ public class Parser(List<Token> tokens)
         return new Statement.Function(name, parameters, body);
     }
 
+    private Statement StructStatement()
+    {
+        Token name = Consume(TokenType.Identifier, "Expected a struct name after 'struct'");
+
+        var body = new List<Statement>();
+        while (!Check(TokenType.EndStruct) && !IsAtEnd())
+        {
+            body.Add(Statement());
+        }
+
+        Consume(TokenType.EndStruct, "Expected 'endstruct' at the end of the struct definition");
+
+        return new Statement.Struct(name, body);
+    }
+
     private Statement UseStatement()
     {
         Expression modulePath = Expression();
@@ -259,6 +293,24 @@ public class Parser(List<Token> tokens)
 
         while (Match(TokenType.LParen))
         {
+            // detect named-argument struct instantiation: Name(field = value, etc.)
+            if (expr is Expression.Variable callee && !Check(TokenType.RParen) && CheckNext(TokenType.Assign))
+            {
+                var fieldInits = new List<(Token Field, Expression Value)>();
+                do
+                {
+                    Token field = Consume(TokenType.Identifier, "Expected a field name");
+                    Consume(TokenType.Assign, "Expected '=' after field name");
+                    Expression value = Expression();
+                    fieldInits.Add((field, value));
+                }
+                while (Match(TokenType.Comma));
+
+                Consume(TokenType.RParen, "Expected ')' after field initializers");
+                return new Expression.StructCall(callee.Name, fieldInits);
+            }
+
+            // regular call
             var arguments = new List<Expression>();
             if (!Check(TokenType.RParen))
             {
@@ -281,7 +333,17 @@ public class Parser(List<Token> tokens)
         if (Match(TokenType.Number, TokenType.String)) return new Expression.Literal(Previous().Literal);
         if (Match(TokenType.True))                     return new Expression.Literal(true);
         if (Match(TokenType.False))                    return new Expression.Literal(false);
-        if (Match(TokenType.Identifier))               return new Expression.Variable(Previous());
+        if (Match(TokenType.Identifier))
+        {
+            Token ident = Previous();
+            // check for struct field access: myStruct->myField
+            if (Match(TokenType.Arrow))
+            {
+                Token member = Consume(TokenType.Identifier, "Expected a member name after '->'");
+                return new Expression.MemberAccess(ident, member);
+            }
+            return new Expression.Variable(ident);
+        }
 
         if (Match(TokenType.LParen))
         {
@@ -310,6 +372,8 @@ public class Parser(List<Token> tokens)
     }
 
     private bool Check(TokenType type) => IsAtEnd() == false && Peek().Type == type;
+
+    private bool CheckNext(TokenType type) => _current + 1 < _tokens.Count && _tokens[_current + 1].Type == type;
 
     private Token Advance()
     {

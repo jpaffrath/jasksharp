@@ -5,6 +5,31 @@ public class ReturnException : Exception
     public object? Value { get; }
     public ReturnException(object? value) : base() { Value = value; }
 }
+// structs itself are immutable, hence IReadOnlyDictionary for fields
+public class StructInstance
+{
+    public string TypeName { get; }
+    public IReadOnlyDictionary<string, object?> Fields { get; }
+
+    public StructInstance(string typeName, Dictionary<string, object?> fields)
+    {
+        TypeName = typeName;
+        Fields = fields.AsReadOnly();
+    }
+
+    // returns a new StructInstance with one field replaced, leaving this instance unchanged
+    public StructInstance WithField(string name, object? value)
+    {
+        var newFields = new Dictionary<string, object?>(Fields) { [name] = value };
+        return new StructInstance(TypeName, newFields);
+    }
+
+    public override string ToString()
+    {
+        var fields = string.Join(", ", Fields.Select(kv => $"{kv.Key}: {Interpreter.Stringify(kv.Value)}"));
+        return $"{TypeName} {{ {fields} }}";
+    }
+}
 
 public delegate object? InternalFunctionDelegate(Expression.Call call);
 
@@ -15,6 +40,9 @@ public class Interpreter
 
     // dictionary for internal functions: name -> delegate
     private readonly Dictionary<string, InternalFunctionDelegate> _internalFunctions = [];
+
+    // dictionary for struct definitions: name -> body statements
+    private readonly Dictionary<string, List<Statement>> _structs = [];
 
     // stack for environments to manage scopes
     private readonly Stack<Dictionary<string, object?>> _scopes = new();
@@ -149,6 +177,31 @@ public class Interpreter
                 _functions[f.Name.Lexeme] = (f.Params, f.Body);
                 break;
 
+            case Statement.Struct s:
+                _structs[s.Name.Lexeme] = s.Body;
+                break;
+
+            case Statement.StructUpdate su:
+                object? sourceObj = Evaluate(su.Source);
+                if (sourceObj is not StructInstance sourceInstance)
+                {
+                    throw new LangException($"'update' expects a struct instance, but got '{GetValueType(sourceObj)}'");
+                }
+
+                // fold each update over the instance, producing a new copy each time
+                StructInstance updated = sourceInstance;
+                foreach (var (field, valueExpr) in su.Updates)
+                {
+                    if (!updated.Fields.ContainsKey(field.Lexeme))
+                    {
+                        throw new LangException($"Struct '{updated.TypeName}' has no field '{field.Lexeme}'", field);
+                    }
+                    updated = updated.WithField(field.Lexeme, Evaluate(valueExpr));
+                }
+
+                CurrentEnvironment[su.Target.Lexeme] = updated;
+                break;
+
             case Statement.Expression e:
                 Evaluate(e.Value);
                 break;
@@ -192,12 +245,14 @@ public class Interpreter
     {
         return expression switch
         {
-            Expression.Literal  l => l.Value,
-            Expression.Grouping g => Evaluate(g.Inner),
-            Expression.Variable v => LookupVariable(v.Name),
-            Expression.Unary    u => EvaluateUnary(u),
-            Expression.Binary   b => EvaluateBinary(b),
-            Expression.Call     c => EvaluateCall(c),
+            Expression.Literal      l => l.Value,
+            Expression.Grouping     g => Evaluate(g.Inner),
+            Expression.Variable     v => LookupVariable(v.Name),
+            Expression.Unary        u => EvaluateUnary(u),
+            Expression.Binary       b => EvaluateBinary(b),
+            Expression.Call         c => EvaluateCall(c),
+            Expression.StructCall  sc => EvaluateStructCall(sc),
+            Expression.MemberAccess m => EvaluateMemberAccess(m),
             _ => throw new LangException($"Unknown expression: {expression}")
         };
     }
@@ -215,6 +270,38 @@ public class Interpreter
         if (_internalFunctions.TryGetValue(funcName, out var internalFunc))
         {
             return internalFunc(call);
+        }
+
+        // new struct with no overwritten fields: MyStruct()
+        if (_structs.TryGetValue(funcName, out var structBody))
+        {
+            if (call.Arguments.Count != 0)
+            {
+                throw new LangException($"Struct '{funcName}' instantiation with positional arguments is not supported. Use named fields: {funcName}(field = value, ...)", funcExpr.Name);
+            }
+
+            var fields = new Dictionary<string, object?>();
+
+            // run the struct body in a temporary scope, capturing Store results as fields
+            _scopes.Push(new Dictionary<string, object?>());
+            try
+            {
+                foreach (var stmt in structBody)
+                {
+                    Execute(stmt);
+                }
+                // copy everything stored in that scope into the fields dictionary
+                foreach (var kv in _scopes.Peek())
+                {
+                    fields[kv.Key] = kv.Value;
+                }
+            }
+            finally
+            {
+                _scopes.Pop();
+            }
+
+            return new StructInstance(funcName, fields);
         }
 
         if (_functions.TryGetValue(funcName, out var funcDef) == false)
@@ -269,6 +356,67 @@ public class Interpreter
 
         // function returns nil
         return null;
+    }
+
+    private object? EvaluateStructCall(Expression.StructCall call)
+    {
+        string structName = call.Name.Lexeme;
+
+        if (!_structs.TryGetValue(structName, out var structBody))
+        {
+            throw new LangException($"Unknown struct '{structName}'", call.Name);
+        }
+
+        // run the body to get default field values
+        var fields = new Dictionary<string, object?>();
+        _scopes.Push(new Dictionary<string, object?>());
+
+        try
+        {
+            foreach (var stmt in structBody)
+            {
+                Execute(stmt);
+            }
+
+            foreach (var kv in _scopes.Peek())
+            {
+                fields[kv.Key] = kv.Value;
+            }
+        }
+        finally
+        {
+            _scopes.Pop();
+        }
+
+        // apply named field initializers, validating each field name
+        foreach (var (field, valueExpr) in call.FieldInits)
+        {
+            if (!fields.ContainsKey(field.Lexeme))
+            {
+                throw new LangException($"Struct '{structName}' has no field '{field.Lexeme}'", field);
+            }
+
+            fields[field.Lexeme] = Evaluate(valueExpr);
+        }
+
+        return new StructInstance(structName, fields);
+    }
+
+    private object? EvaluateMemberAccess(Expression.MemberAccess m)
+    {
+        object? obj = LookupVariable(m.StructName);
+
+        if (obj is not StructInstance instance)
+        {
+            throw new LangException($"Variable '{m.StructName.Lexeme}' is not a struct instance", m.StructName);
+        }
+
+        if (!instance.Fields.TryGetValue(m.Member.Lexeme, out var fieldValue))
+        {
+            throw new LangException($"Struct '{instance.TypeName}' has no member '{m.Member.Lexeme}'", m.Member);
+        }
+
+        return fieldValue;
     }
 
     // Internal functions
@@ -623,7 +771,7 @@ public class Interpreter
             "bool" => value is bool,
             "list" => value is List<object?>,
             "any" => value is object,
-            _ => throw new LangException($"Unknown type '{typeName}'.")
+            _ => value is StructInstance si && si.TypeName == typeName
         };
     }
 
@@ -635,6 +783,7 @@ public class Interpreter
             string => "string",
             bool => "bool",
             List<object?> => "list",
+            StructInstance si => si.TypeName,
             null => "nil",
             _ => value.GetType().Name
         };
@@ -745,17 +894,11 @@ public class Interpreter
         return a.Equals(b);
     }
 
-    private static string Stringify(object? value)
+    public static string Stringify(object? value)
     {
-        if (value is null)
-        {
-            return "nil";
-        }
-
-        if (value is bool b)
-        {
-            return b ? "true" : "false";
-        }
+        if (value is null) return "nil";
+        if (value is bool b) return b ? "true" : "false";
+        if (value is StructInstance si) return si.ToString();
 
         if (value is double d)
         {

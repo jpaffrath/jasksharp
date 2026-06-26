@@ -27,6 +27,11 @@ public enum TokenType
     End,
     Return,
 
+    // struct keywords
+    Struct,
+    EndStruct,
+    Update,
+
     // symbols
     Plus,
     Minus,
@@ -37,6 +42,8 @@ public enum TokenType
     RParen,
     Colon,
     Comma,
+    Arrow,
+    Assign,
 
     // comparison operators
     EqualEqual,

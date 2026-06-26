@@ -27,6 +27,9 @@ public class Lexer
         ["function"] = TokenType.Function,
         ["use"]      = TokenType.Use,
         ["end"]      = TokenType.End,
+        ["struct"]    = TokenType.Struct,
+        ["endstruct"] = TokenType.EndStruct,
+        ["update"]   = TokenType.Update,
         ["return"]   = TokenType.Return,
     };
 
@@ -57,7 +60,10 @@ public class Lexer
             case ':': AddToken(TokenType.Colon); break;
             case ',': AddToken(TokenType.Comma); break;
             case '+': AddToken(TokenType.Plus); break;
-            case '-': AddToken(TokenType.Minus); break;
+            case '-':
+                if (Match('>')) AddToken(TokenType.Arrow);
+                else AddToken(TokenType.Minus);
+                break;
             case '*': AddToken(TokenType.Star); break;
             case '%': AddToken(TokenType.Modulo); break;
             case '/': AddToken(TokenType.Slash); break;
@@ -67,7 +73,7 @@ public class Lexer
                 break;
             case '=':
                 if (Match('=')) AddToken(TokenType.EqualEqual);
-                else throw new LangException("Unknown character '='. Did you mean '=='?", _line);
+                else AddToken(TokenType.Assign);
                 break;
             case '!':
                 if (Match('=')) AddToken(TokenType.BangEqual);

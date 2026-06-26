@@ -9,12 +9,16 @@ public abstract record Expression
     public record Binary(Expression Left, Token Op, Expression Right) : Expression;
     public record Grouping(Expression Inner) : Expression;
     public record Call(Expression Callee, List<Expression> Arguments) : Expression;
+    public record StructCall(Token Name, List<(Token Field, JaskLang.Expression Value)> FieldInits) : Expression;
+    public record MemberAccess(Token StructName, Token Member) : Expression;
 }
 
 // everything that is executed but does not produce a value itself
 public abstract record Statement
 {
     public record Store(Token Name, JaskLang.Expression Value) : Statement;
+
+    public record StructUpdate(JaskLang.Expression Source, List<(Token Field, JaskLang.Expression Value)> Updates, Token Target) : Statement;
 
     public record If(JaskLang.Expression Condition, List<Statement> ThenBranch, List<Statement>? ElseBranch) : Statement;
 
@@ -31,4 +35,6 @@ public abstract record Statement
     public record Use(JaskLang.Expression Value) : Statement;
 
     public record Return(JaskLang.Expression? Value) : Statement;
+
+    public record Struct(Token Name, List<Statement> Body) : Statement;
 }
