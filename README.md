@@ -68,6 +68,24 @@ greetNumber("Bob", 31)
 ```
 Notice: If the type of the parameter is not fix, `:any` can be used but the type should be checked before using it.
 
+## Structs
+A struct is a collection of variables (fields), like an instance of a class in other languages:
+```pseudo
+struct Car
+    store "" in brand
+    store 0 in hp
+endstruct
+```
+Structs can be initialized default or with named fields:
+```pseudo
+store Car() in emptyCar
+store Car(brand = "Mercedes", hp = 234) in myBenz
+```
+Structs are immutable. In order to update a field, one has to create a new instance:
+```pseudo
+store myBenz update hp = 334 in myBenz
+```
+
 # Use
 To use the interactive mode, invoke jask:
 ```terminal
