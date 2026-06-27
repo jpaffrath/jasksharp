@@ -1,0 +1,15 @@
+; jask stdlib implementation
+
+function printLine(line: any)
+    print(line)
+    print("\n")
+end
+
+; overloads internal function stringFrom(obj: any)
+function stringFrom(list: list)
+    set str to ""
+    for char in list
+            set str to str + stringFrom(char)
+    endfor
+    return str
+end
