@@ -71,6 +71,7 @@ public class Interpreter
         _internalFunctions["type"]  = CallInternalFunctionType;
         _internalFunctions["clock"] = CallInternalFunctionClock;
         _internalFunctions["exit"]  = CallInternalFunctionExit;
+        _internalFunctions["stringFrom"]  = CallInternalFunctionStringFrom;
 
         // list functions
         _internalFunctions["list"]         = CallInternalFunctionList;
@@ -824,6 +825,18 @@ public class Interpreter
         }
 
         return Console.ReadLine();
+    }
+
+    private object? CallInternalFunctionStringFrom(Expression.Call call)
+    {
+        if (call.Arguments.Count != 1)
+        {
+            Expression.Variable? funcExpr = call.Callee as Expression.Variable;
+            throw new LangException($"Function 'stringFrom' expects 1 argument, but got {call.Arguments.Count}", funcExpr!.Name);
+        }
+
+        object? argValue = Evaluate(call.Arguments[0]);
+        return Stringify(argValue);
     }
 
     private object? CallInternalFunctionExit(Expression.Call call)
