@@ -906,7 +906,13 @@ public class Interpreter
 
     private object? LookupVariable(Token name)
     {
-        if (CurrentEnvironment.TryGetValue(name.Lexeme, out var value)) return value;
+        foreach (var scope in _scopes)
+        {
+            if (scope.TryGetValue(name.Lexeme, out var value)) {
+                return value;
+            }
+        }
+
         throw new LangException($"Unknown variable '{name.Lexeme}'.", name);
     }
 
