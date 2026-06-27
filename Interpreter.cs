@@ -883,7 +883,7 @@ public class Interpreter
         {
             "number" => value is double,
             "string" => value is string,
-            "bool" => value is bool,
+            "boolean" => value is bool,
             "list" => value is List<object?>,
             "any" => value is object,
             _ => value is StructInstance si && si.TypeName == typeName
@@ -896,7 +896,7 @@ public class Interpreter
         {
             double => "number",
             string => "string",
-            bool => "bool",
+            bool => "boolean",
             List<object?> => "list",
             StructInstance si => si.TypeName,
             null => "nil",
