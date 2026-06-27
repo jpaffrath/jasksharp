@@ -578,7 +578,7 @@ public class Interpreter
             throw new LangException($"Function 'listSize' expects a list, but got '{GetValueType(listObj)}'", funcExpr!.Name);
         }
 
-        return list.Count;
+        return (double)list.Count;
     }
 
     private object? CallInternalFunctionListAdd(Expression.Call call)
