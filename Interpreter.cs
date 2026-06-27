@@ -249,12 +249,32 @@ public class Interpreter
             Expression.Grouping     g => Evaluate(g.Inner),
             Expression.Variable     v => LookupVariable(v.Name),
             Expression.Unary        u => EvaluateUnary(u),
-            Expression.Binary       b => EvaluateBinary(b),
+            Expression.Binary       b => EvaluateShortCircuit(b),
             Expression.Call         c => EvaluateCall(c),
             Expression.StructCall  sc => EvaluateStructCall(sc),
             Expression.MemberAccess m => EvaluateMemberAccess(m),
             _ => throw new LangException($"Unknown expression: {expression}")
         };
+    }
+
+    // handles and/or with short-circuit evaluation, delegates everything else to EvaluateBinary
+    private object? EvaluateShortCircuit(Expression.Binary b)
+    {
+        if (b.Op.Type == TokenType.And)
+        {
+            object? left = Evaluate(b.Left);
+            if (!IsTruthy(left)) return false; // short-circuit: left is false, skip right
+            return IsTruthy(Evaluate(b.Right));
+        }
+
+        if (b.Op.Type == TokenType.Or)
+        {
+            object? left = Evaluate(b.Left);
+            if (IsTruthy(left)) return true; // short-circuit: left is true, skip right
+            return IsTruthy(Evaluate(b.Right));
+        }
+
+        return EvaluateBinary(b);
     }
 
     private object? EvaluateCall(Expression.Call call)
@@ -801,8 +821,15 @@ public class Interpreter
         return u.Op.Type switch
         {
             TokenType.Minus => -CheckNumber(u.Op, right),
+            TokenType.Not   => !CheckBool(u.Op, right),
             _ => throw new LangException($"Unknown unary operator '{u.Op.Lexeme}'.", u.Op)
         };
+    }
+
+    private static bool CheckBool(Token op, object? value)
+    {
+        if (value is bool b) return b;
+        throw new LangException($"'not' expects a bool, but received '{Stringify(value)}'", op);
     }
 
     private object EvaluateBinary(Expression.Binary b)

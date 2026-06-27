@@ -214,7 +214,47 @@ public class Parser(List<Token> tokens)
         return new Statement.Return(value);
     }
 
-    private Expression Expression() => Equality();
+    private Expression Expression() => Or();
+
+    private Expression Or()
+    {
+        Expression expr = And();
+
+        while (Match(TokenType.Or))
+        {
+            Token op = Previous();
+            Expression right = And();
+            expr = new Expression.Binary(expr, op, right);
+        }
+
+        return expr;
+    }
+
+    private Expression And()
+    {
+        Expression expr = Not();
+
+        while (Match(TokenType.And))
+        {
+            Token op = Previous();
+            Expression right = Not();
+            expr = new Expression.Binary(expr, op, right);
+        }
+
+        return expr;
+    }
+
+    private Expression Not()
+    {
+        if (Match(TokenType.Not))
+        {
+            Token op = Previous();
+            Expression right = Not(); // right-associative: not not x is valid
+            return new Expression.Unary(op, right);
+        }
+
+        return Equality();
+    }
 
     private Expression Equality()
     {
