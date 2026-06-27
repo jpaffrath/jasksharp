@@ -821,16 +821,11 @@ public class Interpreter
         return u.Op.Type switch
         {
             TokenType.Minus => -CheckNumber(u.Op, right),
-            TokenType.Not   => !CheckBool(u.Op, right),
+            TokenType.Not   => !IsTruthy(right),
             _ => throw new LangException($"Unknown unary operator '{u.Op.Lexeme}'.", u.Op)
         };
     }
 
-    private static bool CheckBool(Token op, object? value)
-    {
-        if (value is bool b) return b;
-        throw new LangException($"'not' expects a bool, but received '{Stringify(value)}'", op);
-    }
 
     private object EvaluateBinary(Expression.Binary b)
     {

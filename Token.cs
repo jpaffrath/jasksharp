@@ -22,6 +22,7 @@ public enum TokenType
     EndFor,
     True,
     False,
+    Nil,
     Function,
     Use,
     End,

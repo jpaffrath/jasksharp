@@ -24,6 +24,7 @@ public class Lexer
         ["endfor"]   = TokenType.EndFor,
         ["true"]     = TokenType.True,
         ["false"]    = TokenType.False,
+        ["nil"]      = TokenType.Nil,
         ["function"] = TokenType.Function,
         ["use"]      = TokenType.Use,
         ["end"]      = TokenType.End,

@@ -371,6 +371,7 @@ public class Parser(List<Token> tokens)
         if (Match(TokenType.Number, TokenType.String)) return new Expression.Literal(Previous().Literal);
         if (Match(TokenType.True))                     return new Expression.Literal(true);
         if (Match(TokenType.False))                    return new Expression.Literal(false);
+        if (Match(TokenType.Nil))                      return new Expression.Literal(null);
         if (Match(TokenType.Identifier))
         {
             Token ident = Previous();
