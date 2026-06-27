@@ -15,78 +15,60 @@
 
 # Introduction
 
-This is a reimplementation of the [jpaffrath/jask](https://github.com/jpaffrath/jask) interpreter in C#, making this version 2 of the jask language.
+jask is a highly readable interpreter language in early development. The jask interpreter is fully written in C# without other dependencies. It is just a hobby project for fun and learning. Contributions are always welcome!
+
+Seeing jask for the the first time? Try the [Getting strated guide](https://github.com/jpaffrath/jasksharp/wiki/Getting-started)! For further information, please visit the [Wiki](https://github.com/jpaffrath/jasksharp/wiki).
+
+This is a reimplementation of the [jpaffrath/jask](https://github.com/jpaffrath/jask) interpreter, making this version 2 of the jask language.
 I decided to rewrite the entire interpreter because the first version of jask was non-intuitive, very limited and I wanted to dig deeper into learning C# and the dotnet framework.
 
-This implementation uses the platform independent dotnet framework version 10 and has no dependencies to other libraries.
+# Examples
 
-# Changes to jask 1.0.0
-
-## assign has been removed
-New and already existing variables must now be assigned with store
+## Hello World
 ```pseudo
-store 100 to myNum
-store "Test" to myNum
+set hello to "Hello, World!"
+print(hello)
 ```
+jask aims to be highly readable, easy to maintain, and understandable to beginners. The syntax largely avoids complex notation and is modeled after natural language.
 
-## Arithmetic has been simplified and calculations have been enhanced
-In jask version 1.0.0, one has to use the keywords plus, minus, divide, etc. for simple arithmetic calculations.
-This has been changed vor a better readability:
+## Functions, conditions, lists, loops and structs...
+A more complex example for a direct deep-dive:
 ```pseudo
-store 100 * 2.123 in myNum
-store myNum / myNum in result
-```
-Additionally, arithmetic operations in jask 1.0.0 were heavily limited. Version 2.0.0 allows complex statements, which takes into account the correct mathematical order of operators:
-```pseudo
-store 2 + 2.123 * (2.3 + 4 / 5) in myNum
-store myNum / myNum in result
-```
+struct Edible
+    set name to ""
+    set number to 0
+    set healthy to false
+endstruct
 
-## Loops have been simplified
-A simple for-loop can be invoked like this:
-```pseudo
-; per default, increment with 1
+function shouldIEatThis(edible: Edible)
+    print(edible->number + "x " + edible->name + "? ")
 
-for i from 1 to n
-    print(i)
-endfor
+    if edible->healthy == true
+        print("Yes, absolutely!")
+    else
+        print("Oh no, I'd rather not")
+    endif
 
-; define own incrementation function
-
-for i from 0 to 100 with i * 2
-    print(i)
-endfor
-```
-
-## Function parameters have types and are separated by a comma
-```pseudo
-function greetNumber(name:string, age:number)
-    print("Hello, " + name + ". You are " + value + " years old.")
+    print("\n")
 end
 
-greetNumber("Bob", 31)
-```
-Notice: If the type of the parameter is not fix, `:any` can be used but the type should be checked before using it.
+set apple to Edible(name = "Apple", number = 2, healthy = true)
+set pizza to Edible(name = "Pizza", number = 5)
 
-## Structs
-A struct is a collection of variables (fields), like an instance of a class in other languages:
-```pseudo
-struct Car
-    store "" in brand
-    store 0 in hp
-endstruct
+set myEdibles to list(apple, pizza)
+
+for edible in myEdibles
+    shouldIEatThis(edible)
+    
+endfor
 ```
-Structs can be initialized default or with named fields:
+This will output
 ```pseudo
-store Car() in emptyCar
-store Car(brand = "Mercedes", hp = 234) in myBenz
-```
-Structs are immutable. In order to update a field, one has to create a new instance:
-```pseudo
-store myBenz update hp = 334 in myBenz
+2x Apple? Yes, absolutely!
+5x Pizza? Oh no, I'd rather not
 ```
 
-# Use
+# Exectution
 To use the interactive mode, invoke jask:
 ```terminal
 dotnet run
