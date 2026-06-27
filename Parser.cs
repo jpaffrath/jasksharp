@@ -34,6 +34,8 @@ public class Parser(List<Token> tokens)
 
     private Statement SetStatement()
     {
+        Token name = Consume(TokenType.Identifier, "Expected a variable name after 'set'");
+        Consume(TokenType.To, "Expected 'to' after variable name");
         Expression source = Expression();
 
         // check for struct update: set <target> to <source> update <field> = <value> [update ...]*
