@@ -289,6 +289,15 @@ public class Interpreter
 
         string funcName = funcExpr.Name.Lexeme;
 
+        // check for user-defined overloads first (they take priority over internals)
+        bool hasUserOverload = _functions.Keys.Any(k => k.StartsWith(funcName + "("));
+
+        // if no user overload exists, delegate to internal immediately (avoids double arg evaluation)
+        if (!hasUserOverload && _internalFunctions.TryGetValue(funcName, out var internalFunc))
+        {
+            return internalFunc(call);
+        }
+
         // new struct with no overwritten fields: MyStruct()
         if (_structs.TryGetValue(funcName, out var structBody))
         {
@@ -329,6 +338,9 @@ public class Interpreter
             .Select(kv => kv.Value)
             .ToList();
 
+        if (overloads.Count == 0)
+            throw new LangException($"Unknown function '{funcName}'", funcExpr.Name);
+
         // pick first overload whose arity and parameter types are all compatible
         var match = overloads.FirstOrDefault(o =>
             o.Params.Count == argValues.Count &&
@@ -336,12 +348,10 @@ public class Interpreter
 
         if (match == default)
         {
-            // no user-defined overload matched — fall back to internal function
-            if (_internalFunctions.TryGetValue(funcName, out var internalFunc))
-                return internalFunc(call);
+            // no user overload matched — fall back to internal if one exists
+            if (_internalFunctions.TryGetValue(funcName, out var internalFunction))
+                return internalFunction(call);
 
-            if (overloads.Count == 0)
-                throw new LangException($"Unknown function '{funcName}'", funcExpr.Name);
             bool anyArity = overloads.Any(o => o.Params.Count == argValues.Count);
             if (anyArity)
                 throw new LangException(
