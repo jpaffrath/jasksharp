@@ -1026,7 +1026,7 @@ public class Interpreter
         if (value is double d)
         {
             // trim integers (4 instead of 4.0)
-            if (d == (long)d)
+            if (d >= long.MinValue && d <= long.MaxValue && d == Math.Floor(d))
             {
                 return ((long)d).ToString();
             }
