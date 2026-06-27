@@ -35,7 +35,7 @@ public delegate object? InternalFunctionDelegate(Expression.Call call);
 
 public class Interpreter
 {
-    // dictionary for functions: name -> (parameters, body)
+    // dictionary for functions: "name(type1,type2,...)" -> (parameters, body)
     private readonly Dictionary<string, (List<(Token Name, Token Type)> Params, List<Statement> Body)> _functions = [];
 
     // dictionary for internal functions: name -> delegate
@@ -174,7 +174,7 @@ public class Interpreter
                 break;
 
             case Statement.Function f:
-                _functions[f.Name.Lexeme] = (f.Params, f.Body);
+                _functions[FunctionKey(f.Name.Lexeme, f.Params)] = (f.Params, f.Body);
                 break;
 
             case Statement.Struct s:
@@ -324,36 +324,33 @@ public class Interpreter
             return new StructInstance(funcName, fields);
         }
 
-        if (_functions.TryGetValue(funcName, out var funcDef) == false)
+        // evaluate arguments first so we can match on their types
+        var argValues = call.Arguments.Select(a => Evaluate(a)).ToList();
+        var argTypes  = argValues.Select(v => GetValueType(v)).ToList();
+
+        string exactKey = FunctionKey(funcName, argTypes);
+        if (_functions.TryGetValue(exactKey, out var funcDef) == false)
         {
+            bool anyArity     = _functions.Keys.Any(k => k.StartsWith(funcName + "(") &&
+                                                         _functions[k].Params.Count == argValues.Count);
+            bool anyOverload  = _functions.Keys.Any(k => k.StartsWith(funcName + "("));
+
+            if (anyArity)
+                throw new LangException(
+                    $"Function '{funcName}' has no overload matching types ({string.Join(", ", argTypes)})", funcExpr.Name);
+            if (anyOverload)
+                throw new LangException(
+                    $"Function '{funcName}' has no overload that takes {argValues.Count} argument(s)", funcExpr.Name);
             throw new LangException($"Unknown function '{funcName}'", funcExpr.Name);
         }
 
         var (parameters, body) = funcDef;
 
-        if (call.Arguments.Count != parameters.Count)
-        {
-            throw new LangException($"Function '{funcName}' expects {parameters.Count} arguments, but got {call.Arguments.Count}", funcExpr.Name);
-        }
-
-        // create a new environment for the function call
+        // create a new environment for the function call — types already matched by key lookup
         var functionEnv = new Dictionary<string, object?>();
-        
-        //  bind parameters to arguments with type checking
         for (int i = 0; i < parameters.Count; i++)
         {
-            object? argValue = Evaluate(call.Arguments[i]);
-            string paramType = parameters[i].Type.Lexeme;
-            
-            // check if the argument value matches the expected type
-            if (IsValueOfType(argValue, paramType) == false)
-            {
-                string expectedType = paramType;
-                string actualType = GetValueType(argValue);
-                throw new LangException($"Function '{funcName}': Parameter '{parameters[i].Name.Lexeme}' expects type '{expectedType}', but got '{actualType}'", funcExpr.Name);
-            }
-
-            functionEnv[parameters[i].Name.Lexeme] = argValue;
+            functionEnv[parameters[i].Name.Lexeme] = argValues[i];
         }
 
         // call function body in the new environment
@@ -782,6 +779,12 @@ public class Interpreter
     }
 
     // Helper functions
+    private static string FunctionKey(string name, IEnumerable<string> paramTypes)
+        => $"{name}({string.Join(",", paramTypes)})";
+
+    private static string FunctionKey(string name, List<(Token Name, Token Type)> parameters)
+        => FunctionKey(name, parameters.Select(p => p.Type.Lexeme));
+
     private static bool IsValueOfType(object? value, string typeName)
     {
         return typeName.ToLower() switch
