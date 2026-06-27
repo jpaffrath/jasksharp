@@ -186,7 +186,7 @@ public class Interpreter
                 object? sourceObj = Evaluate(su.Source);
                 if (sourceObj is not StructInstance sourceInstance)
                 {
-                    throw new LangException($"'update' expects a struct instance, but got '{GetValueType(sourceObj)}'");
+                    throw new LangException($"'update' expects a struct instance, but got '{GetValueType(sourceObj)}'", su.Target);
                 }
 
                 // fold each update over the instance, producing a new copy each time
