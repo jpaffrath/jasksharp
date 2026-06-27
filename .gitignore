@@ -430,3 +430,6 @@ FodyWeavers.xsd
 
 # MacOS specific files
 .DS_Store
+
+# other project specific files
+examples/example.jask
