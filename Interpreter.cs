@@ -885,7 +885,7 @@ public class Interpreter
             "string" => value is string,
             "boolean" => value is bool,
             "list" => value is List<object?>,
-            "any" => value is object,
+            "any" => value is object || value == null,
             _ => value is StructInstance si && si.TypeName == typeName
         };
     }
