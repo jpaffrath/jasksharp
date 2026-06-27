@@ -9,6 +9,7 @@ public abstract record Expression
     public record Binary(Expression Left, Token Op, Expression Right) : Expression;
     public record Grouping(Expression Inner) : Expression;
     public record Call(Expression Callee, List<Expression> Arguments) : Expression;
+    public record NamedCall(Token Name, List<(Token ParamName, JaskLang.Expression Value)> Args) : Expression;
     public record StructCall(Token Name, List<(Token Field, JaskLang.Expression Value)> FieldInits) : Expression;
     public record MemberAccess(Token StructName, Token Member) : Expression;
 }

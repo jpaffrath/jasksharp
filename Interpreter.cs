@@ -251,6 +251,7 @@ public class Interpreter
             Expression.Unary        u => EvaluateUnary(u),
             Expression.Binary       b => EvaluateShortCircuit(b),
             Expression.Call         c => EvaluateCall(c),
+            Expression.NamedCall   nc => EvaluateNamedCall(nc),
             Expression.StructCall  sc => EvaluateStructCall(sc),
             Expression.MemberAccess m => EvaluateMemberAccess(m),
             _ => throw new LangException($"Unknown expression: {expression}")
@@ -287,11 +288,6 @@ public class Interpreter
 
         string funcName = funcExpr.Name.Lexeme;
 
-        if (_internalFunctions.TryGetValue(funcName, out var internalFunc))
-        {
-            return internalFunc(call);
-        }
-
         // new struct with no overwritten fields: MyStruct()
         if (_structs.TryGetValue(funcName, out var structBody))
         {
@@ -324,34 +320,40 @@ public class Interpreter
             return new StructInstance(funcName, fields);
         }
 
-        // evaluate arguments first so we can match on their types
+        // evaluate arguments first so we can match overloads by compatible types
         var argValues = call.Arguments.Select(a => Evaluate(a)).ToList();
-        var argTypes  = argValues.Select(v => GetValueType(v)).ToList();
 
-        string exactKey = FunctionKey(funcName, argTypes);
-        if (_functions.TryGetValue(exactKey, out var funcDef) == false)
+        var overloads = _functions
+            .Where(kv => kv.Key.StartsWith(funcName + "("))
+            .Select(kv => kv.Value)
+            .ToList();
+
+        // pick first overload whose arity and parameter types are all compatible
+        var match = overloads.FirstOrDefault(o =>
+            o.Params.Count == argValues.Count &&
+            o.Params.Zip(argValues, (p, v) => IsValueOfType(v, p.Type.Lexeme)).All(x => x));
+
+        if (match == default)
         {
-            bool anyArity     = _functions.Keys.Any(k => k.StartsWith(funcName + "(") &&
-                                                         _functions[k].Params.Count == argValues.Count);
-            bool anyOverload  = _functions.Keys.Any(k => k.StartsWith(funcName + "("));
+            // no user-defined overload matched — fall back to internal function
+            if (_internalFunctions.TryGetValue(funcName, out var internalFunc))
+                return internalFunc(call);
 
+            if (overloads.Count == 0)
+                throw new LangException($"Unknown function '{funcName}'", funcExpr.Name);
+            bool anyArity = overloads.Any(o => o.Params.Count == argValues.Count);
             if (anyArity)
                 throw new LangException(
-                    $"Function '{funcName}' has no overload matching types ({string.Join(", ", argTypes)})", funcExpr.Name);
-            if (anyOverload)
-                throw new LangException(
-                    $"Function '{funcName}' has no overload that takes {argValues.Count} argument(s)", funcExpr.Name);
-            throw new LangException($"Unknown function '{funcName}'", funcExpr.Name);
+                    $"Function '{funcName}' has no overload matching types ({string.Join(", ", argValues.Select(GetValueType))})", funcExpr.Name);
+            throw new LangException(
+                $"Function '{funcName}' has no overload that takes {argValues.Count} argument(s)", funcExpr.Name);
         }
 
-        var (parameters, body) = funcDef;
+        var (parameters, body) = match;
 
-        // create a new environment for the function call — types already matched by key lookup
         var functionEnv = new Dictionary<string, object?>();
         for (int i = 0; i < parameters.Count; i++)
-        {
             functionEnv[parameters[i].Name.Lexeme] = argValues[i];
-        }
 
         // call function body in the new environment
         _scopes.Push(functionEnv);
@@ -375,7 +377,74 @@ public class Interpreter
         return null;
     }
 
-    private object? EvaluateStructCall(Expression.StructCall call)
+    private object? EvaluateNamedCall(Expression.NamedCall call)
+    {
+        string name = call.Name.Lexeme;
+
+        // if it's a struct, delegate to struct instantiation
+        if (_structs.ContainsKey(name))
+        {
+            var fieldInits = call.Args.Select(a => (a.ParamName, a.Value)).ToList();
+            return EvaluateStructCall(new Expression.StructCall(call.Name, fieldInits));
+        }
+
+        // find all overloads for this name
+        var overloads = _functions
+            .Where(kv => kv.Key.StartsWith(name + "("))
+            .Select(kv => kv.Value)
+            .ToList();
+
+        if (overloads.Count == 0)
+            throw new LangException($"Unknown function '{name}'", call.Name);
+
+        // evaluate args up front so we can match on types too
+        var evaluatedArgs = call.Args
+            .Select(a => (a.ParamName, Value: Evaluate(a.Value)))
+            .ToList();
+
+        var suppliedNames = call.Args.Select(a => a.ParamName.Lexeme).ToHashSet();
+
+        // find overload matching both param names and compatible types
+        var match = overloads.FirstOrDefault(o =>
+            o.Params.Count == call.Args.Count &&
+            o.Params.Select(p => p.Name.Lexeme).ToHashSet().SetEquals(suppliedNames) &&
+            o.Params.All(p =>
+            {
+                var arg = evaluatedArgs.First(a => a.ParamName.Lexeme == p.Name.Lexeme);
+                return IsValueOfType(arg.Value, p.Type.Lexeme);
+            }));
+
+        if (match == default)
+            throw new LangException(
+                $"Function '{name}' has no overload matching named parameters ({string.Join(", ", suppliedNames)})", call.Name);
+
+        // bind in parameter declaration order
+        var functionEnv = new Dictionary<string, object?>();
+        foreach (var param in match.Params)
+        {
+            var arg = evaluatedArgs.First(a => a.ParamName.Lexeme == param.Name.Lexeme);
+            functionEnv[param.Name.Lexeme] = arg.Value;
+        }
+
+        _scopes.Push(functionEnv);
+        try
+        {
+            foreach (var stmt in match.Body)
+                Execute(stmt);
+        }
+        catch (ReturnException ex)
+        {
+            return ex.Value;
+        }
+        finally
+        {
+            _scopes.Pop();
+        }
+
+        return null;
+    }
+
+        private object? EvaluateStructCall(Expression.StructCall call)
     {
         string structName = call.Name.Lexeme;
 

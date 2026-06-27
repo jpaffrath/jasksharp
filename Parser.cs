@@ -331,21 +331,21 @@ public class Parser(List<Token> tokens)
 
         while (Match(TokenType.LParen))
         {
-            // detect named-argument struct instantiation: Name(field = value, etc.)
+            // detect named-argument call: Name(param = value, ...)
             if (expr is Expression.Variable callee && !Check(TokenType.RParen) && CheckNext(TokenType.Assign))
             {
-                var fieldInits = new List<(Token Field, Expression Value)>();
+                var namedArgs = new List<(Token ParamName, Expression Value)>();
                 do
                 {
-                    Token field = Consume(TokenType.Identifier, "Expected a field name");
-                    Consume(TokenType.Assign, "Expected '=' after field name");
+                    Token paramName = Consume(TokenType.Identifier, "Expected a parameter name");
+                    Consume(TokenType.Assign, "Expected '=' after parameter name");
                     Expression value = Expression();
-                    fieldInits.Add((field, value));
+                    namedArgs.Add((paramName, value));
                 }
                 while (Match(TokenType.Comma));
 
-                Consume(TokenType.RParen, "Expected ')' after field initializers");
-                return new Expression.StructCall(callee.Name, fieldInits);
+                Consume(TokenType.RParen, "Expected ')' after named arguments");
+                return new Expression.NamedCall(callee.Name, namedArgs);
             }
 
             // regular call
