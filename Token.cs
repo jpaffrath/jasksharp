@@ -8,7 +8,7 @@ public enum TokenType
     String,
 
     // keywords
-    Store,
+    Set,
     In,
     If,
     Else,

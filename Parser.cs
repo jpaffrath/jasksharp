@@ -19,7 +19,7 @@ public class Parser(List<Token> tokens)
 
     private Statement Statement()
     {
-        if (Match(TokenType.Store))    return StoreStatement();
+        if (Match(TokenType.Set))      return SetStatement();
         if (Match(TokenType.If))       return IfStatement();
         if (Match(TokenType.While))    return WhileStatement();
         if (Match(TokenType.For))      return ForStatement();
@@ -32,11 +32,11 @@ public class Parser(List<Token> tokens)
         return new Statement.Expression(Expression());
     }
 
-    private Statement StoreStatement()
+    private Statement SetStatement()
     {
         Expression source = Expression();
 
-        // struct update: store <source> update <field> = <value> in <target>
+        // check for struct update: set <target> to <source> update <field> = <value> [update ...]*
         if (Check(TokenType.Update))
         {
             var updates = new List<(Token Field, Expression Value)>();
@@ -49,14 +49,10 @@ public class Parser(List<Token> tokens)
                 updates.Add((field, value));
             }
 
-            Consume(TokenType.In, "Expected 'in' after update clause");
-            Token target = Consume(TokenType.Identifier, "Expected a variable name after 'in'");
-            return new Statement.StructUpdate(source, updates, target);
+            return new Statement.StructUpdate(source, updates, name);
         }
 
-        Consume(TokenType.In, "Expected 'in' after value of a store instruction");
-        Token name = Consume(TokenType.Identifier, "Expected a variable name after 'in'");
-        return new Statement.Store(name, source);
+        return new Statement.Set(name, source);
     }
 
     private Statement IfStatement()

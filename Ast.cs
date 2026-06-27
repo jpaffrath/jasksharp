@@ -16,7 +16,7 @@ public abstract record Expression
 // everything that is executed but does not produce a value itself
 public abstract record Statement
 {
-    public record Store(Token Name, JaskLang.Expression Value) : Statement;
+    public record Set(Token Name, JaskLang.Expression Value) : Statement;
 
     public record StructUpdate(JaskLang.Expression Source, List<(Token Field, JaskLang.Expression Value)> Updates, Token Target) : Statement;
 

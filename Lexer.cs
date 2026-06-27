@@ -10,7 +10,7 @@ public class Lexer
 
     private static readonly Dictionary<string, TokenType> Keywords = new()
     {
-        ["store"]    = TokenType.Store,
+        ["set"]      = TokenType.Set,
         ["in"]       = TokenType.In,
         ["if"]       = TokenType.If,
         ["else"]     = TokenType.Else,

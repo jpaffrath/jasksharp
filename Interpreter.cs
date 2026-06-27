@@ -91,7 +91,7 @@ public class Interpreter
     {
         switch (statement)
         {
-            case Statement.Store s:
+            case Statement.Set s:
                 CurrentEnvironment[s.Name.Lexeme] = Evaluate(s.Value);
                 break;
 
