@@ -26,6 +26,9 @@ public enum TokenType
     Use,
     End,
     Return,
+    And,
+    Or,
+    Not,
 
     // struct keywords
     Struct,
