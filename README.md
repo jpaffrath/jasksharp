@@ -17,7 +17,7 @@
 
 jask is a highly readable interpreter language in early development. The jask interpreter is fully written in C# without other dependencies. It is just a hobby project for fun and learning. Contributions are always welcome!
 
-Seeing jask for the the first time? Try the [Getting strated guide](https://github.com/jpaffrath/jasksharp/wiki/Getting-started)! For further information, please visit the [Wiki](https://github.com/jpaffrath/jasksharp/wiki).
+Seeing jask for the the first time? Try the [Getting started guide](https://github.com/jpaffrath/jasksharp/wiki/Getting-started)! For further information, please visit the [Wiki](https://github.com/jpaffrath/jasksharp/wiki).
 
 This is a reimplementation of the [jpaffrath/jask](https://github.com/jpaffrath/jask) interpreter, making this version 2 of the jask language.
 I decided to rewrite the entire interpreter because the first version of jask was non-intuitive, very limited and I wanted to dig deeper into learning C# and the dotnet framework.
