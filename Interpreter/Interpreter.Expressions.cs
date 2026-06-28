@@ -1,0 +1,370 @@
+namespace JaskLang;
+
+public partial class Interpreter
+{
+    private object? Evaluate(Expression expression)
+    {
+        return expression switch
+        {
+            Expression.Literal      l => l.Value,
+            Expression.Grouping     g => Evaluate(g.Inner),
+            Expression.Variable     v => LookupVariable(v.Name),
+            Expression.Unary        u => EvaluateUnary(u),
+            Expression.Binary       b => EvaluateShortCircuit(b),
+            Expression.Call         c => EvaluateCall(c),
+            Expression.NamedCall   nc => EvaluateNamedCall(nc),
+            Expression.StructCall  sc => EvaluateStructCall(sc),
+            Expression.MemberAccess m => EvaluateMemberAccess(m),
+            _ => throw new LangException($"Unknown expression: {expression}")
+        };
+    }
+
+    // handles and/or with short-circuit evaluation, delegates everything else to EvaluateBinary
+    private object? EvaluateShortCircuit(Expression.Binary b)
+    {
+        if (b.Op.Type == TokenType.And)
+        {
+            object? left = Evaluate(b.Left);
+            if (!IsTruthy(left)) return false; // short-circuit: left is false, skip right
+            return IsTruthy(Evaluate(b.Right));
+        }
+
+        if (b.Op.Type == TokenType.Or)
+        {
+            object? left = Evaluate(b.Left);
+            if (IsTruthy(left)) return true; // short-circuit: left is true, skip right
+            return IsTruthy(Evaluate(b.Right));
+        }
+
+        return EvaluateBinary(b);
+    }
+
+    private object? EvaluateCall(Expression.Call call)
+    {
+        Expression.Variable? funcExpr = call.Callee as Expression.Variable;
+        if (funcExpr == null)
+        {
+            throw new LangException("Can only call functions by name");
+        }
+
+        string funcName = funcExpr.Name.Lexeme;
+
+        // check for user-defined overloads first (they take priority over internals)
+        bool hasUserOverload = _functions.Keys.Any(k => k.StartsWith(funcName + "("));
+
+        // if no user overload exists, delegate to internal immediately (avoids double arg evaluation)
+        if (!hasUserOverload && _internalFunctions.TryGetValue(funcName, out var internalFunc))
+        {
+            return internalFunc(call);
+        }
+
+        // new struct with no overwritten fields: MyStruct()
+        if (_structs.TryGetValue(funcName, out var structBody))
+        {
+            if (call.Arguments.Count != 0)
+            {
+                throw new LangException($"Struct '{funcName}' instantiation with positional arguments is not supported. Use named fields: {funcName}(field = value, ...)", funcExpr.Name);
+            }
+
+            var fields = new Dictionary<string, object?>();
+
+            // run the struct body in a temporary scope, capturing Store results as fields
+            _scopes.Push(new Dictionary<string, object?>());
+            try
+            {
+                foreach (var stmt in structBody)
+                {
+                    Execute(stmt);
+                }
+                // copy everything stored in that scope into the fields dictionary
+                foreach (var kv in _scopes.Peek())
+                {
+                    fields[kv.Key] = kv.Value;
+                }
+            }
+            finally
+            {
+                _scopes.Pop();
+            }
+
+            return new StructInstance(funcName, fields);
+        }
+
+        // evaluate arguments first so we can match overloads by compatible types
+        var argValues = call.Arguments.Select(a => Evaluate(a)).ToList();
+
+        var overloads = _functions
+            .Where(kv => kv.Key.StartsWith(funcName + "("))
+            .Select(kv => kv.Value)
+            .ToList();
+
+        if (overloads.Count == 0)
+            throw new LangException($"Unknown function '{funcName}'", funcExpr.Name);
+
+        // pick first overload whose arity and parameter types are all compatible
+        var match = overloads.FirstOrDefault(o =>
+            o.Params.Count == argValues.Count &&
+            o.Params.Zip(argValues, (p, v) => IsValueOfType(v, p.Type.Lexeme)).All(x => x));
+
+        if (match == default)
+        {
+            // no user overload matched — fall back to internal if one exists
+            if (_internalFunctions.TryGetValue(funcName, out var internalFunction))
+                return internalFunction(call);
+
+            bool anyArity = overloads.Any(o => o.Params.Count == argValues.Count);
+            if (anyArity)
+                throw new LangException(
+                    $"Function '{funcName}' has no overload matching types ({string.Join(", ", argValues.Select(GetValueType))})", funcExpr.Name);
+            throw new LangException(
+                $"Function '{funcName}' has no overload that takes {argValues.Count} argument(s)", funcExpr.Name);
+        }
+
+        var (parameters, body) = match;
+
+        var functionEnv = new Dictionary<string, object?>();
+        for (int i = 0; i < parameters.Count; i++)
+            functionEnv[parameters[i].Name.Lexeme] = argValues[i];
+
+        // call function body in the new environment
+        _scopes.Push(functionEnv);
+        try
+        {
+            foreach (var stmt in body)
+            {
+                Execute(stmt);
+            }
+        }
+        catch (ReturnException ex)
+        {
+            return ex.Value;
+        }
+        finally
+        {
+            _scopes.Pop();
+        }
+
+        // function returns nil
+        return null;
+    }
+
+    private object? EvaluateNamedCall(Expression.NamedCall call)
+    {
+        string name = call.Name.Lexeme;
+
+        // if it's a struct, delegate to struct instantiation
+        if (_structs.ContainsKey(name))
+        {
+            var fieldInits = call.Args.Select(a => (a.ParamName, a.Value)).ToList();
+            return EvaluateStructCall(new Expression.StructCall(call.Name, fieldInits));
+        }
+
+        // find all overloads for this name
+        var overloads = _functions
+            .Where(kv => kv.Key.StartsWith(name + "("))
+            .Select(kv => kv.Value)
+            .ToList();
+
+        if (overloads.Count == 0)
+            throw new LangException($"Unknown function '{name}'", call.Name);
+
+        // evaluate args up front so we can match on types too
+        var evaluatedArgs = call.Args
+            .Select(a => (a.ParamName, Value: Evaluate(a.Value)))
+            .ToList();
+
+        var suppliedNames = call.Args.Select(a => a.ParamName.Lexeme).ToHashSet();
+
+        // find overload matching both param names and compatible types
+        var match = overloads.FirstOrDefault(o =>
+            o.Params.Count == call.Args.Count &&
+            o.Params.Select(p => p.Name.Lexeme).ToHashSet().SetEquals(suppliedNames) &&
+            o.Params.All(p =>
+            {
+                var arg = evaluatedArgs.First(a => a.ParamName.Lexeme == p.Name.Lexeme);
+                return IsValueOfType(arg.Value, p.Type.Lexeme);
+            }));
+
+        if (match == default)
+            throw new LangException(
+                $"Function '{name}' has no overload matching named parameters ({string.Join(", ", suppliedNames)})", call.Name);
+
+        // bind in parameter declaration order
+        var functionEnv = new Dictionary<string, object?>();
+        foreach (var param in match.Params)
+        {
+            var arg = evaluatedArgs.First(a => a.ParamName.Lexeme == param.Name.Lexeme);
+            functionEnv[param.Name.Lexeme] = arg.Value;
+        }
+
+        _scopes.Push(functionEnv);
+        try
+        {
+            foreach (var stmt in match.Body)
+                Execute(stmt);
+        }
+        catch (ReturnException ex)
+        {
+            return ex.Value;
+        }
+        finally
+        {
+            _scopes.Pop();
+        }
+
+        return null;
+    }
+
+    private object? EvaluateStructCall(Expression.StructCall call)
+    {
+        string structName = call.Name.Lexeme;
+
+        if (!_structs.TryGetValue(structName, out var structBody))
+        {
+            throw new LangException($"Unknown struct '{structName}'", call.Name);
+        }
+
+        // run the body to get default field values
+        var fields = new Dictionary<string, object?>();
+        _scopes.Push(new Dictionary<string, object?>());
+
+        try
+        {
+            foreach (var stmt in structBody)
+            {
+                Execute(stmt);
+            }
+
+            foreach (var kv in _scopes.Peek())
+            {
+                fields[kv.Key] = kv.Value;
+            }
+        }
+        finally
+        {
+            _scopes.Pop();
+        }
+
+        // apply named field initializers, validating each field name
+        foreach (var (field, valueExpr) in call.FieldInits)
+        {
+            if (!fields.ContainsKey(field.Lexeme))
+            {
+                throw new LangException($"Struct '{structName}' has no field '{field.Lexeme}'", field);
+            }
+
+            fields[field.Lexeme] = Evaluate(valueExpr);
+        }
+
+        return new StructInstance(structName, fields);
+    }
+
+    private object? EvaluateMemberAccess(Expression.MemberAccess m)
+    {
+        object? obj = LookupVariable(m.StructName);
+
+        if (obj is not StructInstance instance)
+        {
+            throw new LangException($"Variable '{m.StructName.Lexeme}' is not a struct instance", m.StructName);
+        }
+
+        if (!instance.Fields.TryGetValue(m.Member.Lexeme, out var fieldValue))
+        {
+            throw new LangException($"Struct '{instance.TypeName}' has no member '{m.Member.Lexeme}'", m.Member);
+        }
+
+        return fieldValue;
+    }
+
+    private object EvaluateUnary(Expression.Unary u)
+    {
+        object? right = Evaluate(u.Right);
+        return u.Op.Type switch
+        {
+            TokenType.Minus => -CheckNumber(u.Op, right),
+            TokenType.Not   => !IsTruthy(right),
+            _ => throw new LangException($"Unknown unary operator '{u.Op.Lexeme}'.", u.Op)
+        };
+    }
+
+    private object EvaluateBinary(Expression.Binary b)
+    {
+        object? left = Evaluate(b.Left);
+        object? right = Evaluate(b.Right);
+
+        switch (b.Op.Type)
+        {
+            case TokenType.Plus:
+                // add two numbers, otherwise concatenate (e.g. for strings)
+                if (left is double ld && right is double rd)
+                {
+                    return ld + rd;
+                }
+
+                return Stringify(left) + Stringify(right);
+
+            case TokenType.Minus:        return CheckNumber(b.Op, left) - CheckNumber(b.Op, right);
+            case TokenType.Star:         return CheckNumber(b.Op, left) * CheckNumber(b.Op, right);
+            case TokenType.Modulo:       return CheckNumber(b.Op, left) % CheckNumber(b.Op, right);
+            case TokenType.Greater:      return CheckNumber(b.Op, left) > CheckNumber(b.Op, right);
+            case TokenType.GreaterEqual: return CheckNumber(b.Op, left) >= CheckNumber(b.Op, right);
+            case TokenType.Less:         return CheckNumber(b.Op, left) < CheckNumber(b.Op, right);
+            case TokenType.LessEqual:    return CheckNumber(b.Op, left) <= CheckNumber(b.Op, right);
+            case TokenType.EqualEqual:   return IsEqual(left, right);
+            case TokenType.BangEqual:    return !IsEqual(left, right);
+            case TokenType.Slash:
+                double divisor = CheckNumber(b.Op, right);
+                if (divisor == 0)
+                {
+                    throw new LangException("Division by zero", b.Op);
+                }
+
+                return CheckNumber(b.Op, left) / divisor;
+
+            default:
+                throw new LangException($"Unknown operator '{b.Op.Lexeme}'", b.Op);
+        }
+    }
+
+    private object? LookupVariable(Token name)
+    {
+        foreach (var scope in _scopes)
+        {
+            if (scope.TryGetValue(name.Lexeme, out var value)) {
+                return value;
+            }
+        }
+
+        throw new LangException($"Unknown variable '{name.Lexeme}'.", name);
+    }
+
+    private static bool IsEqual(object? a, object? b)
+    {
+        if (a is null && b is null)
+        {
+            return true;
+        }
+
+        if (a is null)
+        {
+            return false;
+        }
+
+        return a.Equals(b);
+    }
+
+    private static bool IsTruthy(object? value)
+    {
+        if (value is null)
+        {
+            return false;
+        }
+
+        if (value is bool b)
+        {
+            return b;
+        }
+
+        return true;
+    }
+}
