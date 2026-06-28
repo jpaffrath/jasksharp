@@ -101,10 +101,12 @@ public partial class Interpreter
         if (overloads.Count == 0)
             throw new LangException($"Unknown function '{funcName}'", funcExpr.Name);
 
-        // pick first overload whose arity and parameter types are all compatible
-        var match = overloads.FirstOrDefault(o =>
-            o.Params.Count == argValues.Count &&
-            o.Params.Zip(argValues, (p, v) => IsValueOfType(v, p.Type.Lexeme)).All(x => x));
+        // pick most specific overload: sort so overloads with fewer 'any' params come first
+        var match = overloads
+            .OrderBy(o => o.Params.Count(p => p.Type.Lexeme == "any"))
+            .FirstOrDefault(o =>
+                o.Params.Count == argValues.Count &&
+                o.Params.Zip(argValues, (p, v) => IsValueOfType(v, p.Type.Lexeme)).All(x => x));
 
         if (match == default)
         {
