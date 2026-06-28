@@ -31,12 +31,14 @@ public partial class Interpreter
         _internalFunctions["readInput"] = CallInternalFunctionReadInput; 
     }
 
+    private Token GetCallToken(Expression.Call call)
+        => ((Expression.Variable)call.Callee).Name;
+
     private object? CallInternalFunctionPrint(Expression.Call call)
     {
         if (call.Arguments.Count < 1)
         {
-            Expression.Variable? funcExpr = call.Callee as Expression.Variable;
-            throw new LangException($"Function 'print' expects at least 1 argument, but got {call.Arguments.Count}", funcExpr!.Name);
+            throw new LangException($"Function 'print' expects at least 1 argument, but got {call.Arguments.Count}", GetCallToken(call));
         }
 
         // print all arguments
@@ -55,8 +57,7 @@ public partial class Interpreter
     {
         if (call.Arguments.Count != 1)
         {
-            Expression.Variable? funcExpr = call.Callee as Expression.Variable;
-            throw new LangException($"Function 'type' expects 1 argument, but got {call.Arguments.Count}", funcExpr!.Name);
+            throw new LangException($"Function 'type' expects 1 argument, but got {call.Arguments.Count}", GetCallToken(call));
         }
         
         object? value = Evaluate(call.Arguments[0]);
@@ -80,15 +81,13 @@ public partial class Interpreter
     {
         if (call.Arguments.Count != 1)
         {
-            Expression.Variable? funcExpr = call.Callee as Expression.Variable;
-            throw new LangException($"Function 'listSize' expects 1 argument, but got {call.Arguments.Count}", funcExpr!.Name);
+            throw new LangException($"Function 'listSize' expects 1 argument, but got {call.Arguments.Count}", GetCallToken(call));
         }
 
         object? listObj = Evaluate(call.Arguments[0]);
         if (listObj is not List<object?> list)
         {
-            Expression.Variable? funcExpr = call.Callee as Expression.Variable;
-            throw new LangException($"Function 'listSize' expects a list, but got '{GetValueType(listObj)}'", funcExpr!.Name);
+            throw new LangException($"Function 'listSize' expects a list, but got '{GetValueType(listObj)}'", GetCallToken(call));
         }
 
         return (double)list.Count;
@@ -98,16 +97,14 @@ public partial class Interpreter
     {
         if (call.Arguments.Count < 2)
         {
-            Expression.Variable? funcExpr = call.Callee as Expression.Variable;
-            throw new LangException($"Function 'listAdd' expects at least 2 arguments, but got {call.Arguments.Count}", funcExpr!.Name);
+            throw new LangException($"Function 'listAdd' expects at least 2 arguments, but got {call.Arguments.Count}", GetCallToken(call));
         }
 
         // first argument must be a list
         object? listObj = Evaluate(call.Arguments[0]);
         if (listObj is not List<object?> list)
         {
-            Expression.Variable? funcExpr = call.Callee as Expression.Variable;
-            throw new LangException($"Function 'listAdd' expects first argument to be a list, but got '{GetValueType(listObj)}'", funcExpr!.Name);
+            throw new LangException($"Function 'listAdd' expects first argument to be a list, but got '{GetValueType(listObj)}'", GetCallToken(call));
         }
 
         // create a copy of the list to avoid modifying the original
@@ -127,29 +124,25 @@ public partial class Interpreter
     {
         if (call.Arguments.Count != 2)
         {
-            Expression.Variable? funcExpr = call.Callee as Expression.Variable;
-            throw new LangException($"Function 'listGet' expects 2 arguments, but got {call.Arguments.Count}", funcExpr!.Name);
+            throw new LangException($"Function 'listGet' expects 2 arguments, but got {call.Arguments.Count}", GetCallToken(call));
         }
 
         object? listObj = Evaluate(call.Arguments[0]);
         if (listObj is not List<object?> list)
         {
-            Expression.Variable? funcExpr = call.Callee as Expression.Variable;
-            throw new LangException($"Function 'listGet' expects first argument to be a list, but got '{GetValueType(listObj)}'", funcExpr!.Name);
+            throw new LangException($"Function 'listGet' expects first argument to be a list, but got '{GetValueType(listObj)}'", GetCallToken(call));
         }
 
         object? indexObj = Evaluate(call.Arguments[1]);
         if (indexObj is not double indexDouble)
         {
-            Expression.Variable? funcExpr = call.Callee as Expression.Variable;
-            throw new LangException($"Function 'listGet' expects second argument to be a number, but got '{GetValueType(indexObj)}'", funcExpr!.Name);
+            throw new LangException($"Function 'listGet' expects second argument to be a number, but got '{GetValueType(indexObj)}'", GetCallToken(call));
         }
 
         int index = (int)indexDouble;
         if (index < 0 || index >= list.Count)
         {
-            Expression.Variable? funcExpr = call.Callee as Expression.Variable;
-            throw new LangException($"Function 'listGet' index {index} is out of bounds for list of size {list.Count}", funcExpr!.Name);
+            throw new LangException($"Function 'listGet' index {index} is out of bounds for list of size {list.Count}", GetCallToken(call));
         }
 
         return list[index];
@@ -159,29 +152,25 @@ public partial class Interpreter
     {
         if (call.Arguments.Count != 3)
         {
-            Expression.Variable? funcExpr = call.Callee as Expression.Variable;
-            throw new LangException($"Function 'listGetRange' expects 3 arguments, but got {call.Arguments.Count}", funcExpr!.Name);
+            throw new LangException($"Function 'listGetRange' expects 3 arguments, but got {call.Arguments.Count}", GetCallToken(call));
         }
 
         object? listObj = Evaluate(call.Arguments[0]);
         if (listObj is not List<object?> list)
         {
-            Expression.Variable? funcExpr = call.Callee as Expression.Variable;
-            throw new LangException($"Function 'listGetRange' expects first argument to be a list, but got '{GetValueType(listObj)}'", funcExpr!.Name);
+            throw new LangException($"Function 'listGetRange' expects first argument to be a list, but got '{GetValueType(listObj)}'", GetCallToken(call));
         }
 
         object? startIndexObj = Evaluate(call.Arguments[1]);
         if (startIndexObj is not double startIndexDouble)
         {
-            Expression.Variable? funcExpr = call.Callee as Expression.Variable;
-            throw new LangException($"Function 'listGetRange' expects second argument to be a number, but got '{GetValueType(startIndexObj)}'", funcExpr!.Name);
+            throw new LangException($"Function 'listGetRange' expects second argument to be a number, but got '{GetValueType(startIndexObj)}'", GetCallToken(call));
         }
 
         object? endIndexObj = Evaluate(call.Arguments[2]);
         if (endIndexObj is not double endIndexDouble)
         {
-            Expression.Variable? funcExpr = call.Callee as Expression.Variable;
-            throw new LangException($"Function 'listGetRange' expects third argument to be a number, but got '{GetValueType(endIndexObj)}'", funcExpr!.Name);
+            throw new LangException($"Function 'listGetRange' expects third argument to be a number, but got '{GetValueType(endIndexObj)}'", GetCallToken(call));
         }
 
         int startIndex = (int)startIndexDouble;
@@ -189,8 +178,7 @@ public partial class Interpreter
 
         if (startIndex < 0 || endIndex >= list.Count || startIndex > endIndex)
         {
-            Expression.Variable? funcExpr = call.Callee as Expression.Variable;
-            throw new LangException($"Function 'listGetRange' indices [{startIndex}, {endIndex}] are out of bounds for list of size {list.Count}", funcExpr!.Name);
+            throw new LangException($"Function 'listGetRange' indices [{startIndex}, {endIndex}] are out of bounds for list of size {list.Count}", GetCallToken(call));
         }
 
         return list.GetRange(startIndex, endIndex - startIndex + 1);
@@ -200,29 +188,25 @@ public partial class Interpreter
     {
         if (call.Arguments.Count != 3)
         {
-            Expression.Variable? funcExpr = call.Callee as Expression.Variable;
-            throw new LangException($"Function 'listSet' expects 3 arguments, but got {call.Arguments.Count}", funcExpr!.Name);
+            throw new LangException($"Function 'listSet' expects 3 arguments, but got {call.Arguments.Count}", GetCallToken(call));
         }
 
         object? listObj = Evaluate(call.Arguments[0]);
         if (listObj is not List<object?> list)
         {
-            Expression.Variable? funcExpr = call.Callee as Expression.Variable;
-            throw new LangException($"Function 'listSet' expects first argument to be a list, but got '{GetValueType(listObj)}'", funcExpr!.Name);
+            throw new LangException($"Function 'listSet' expects first argument to be a list, but got '{GetValueType(listObj)}'", GetCallToken(call));
         }
 
         object? indexObj = Evaluate(call.Arguments[1]);
         if (indexObj is not double indexDouble)
         {
-            Expression.Variable? funcExpr = call.Callee as Expression.Variable;
-            throw new LangException($"Function 'listSet' expects second argument to be a number, but got '{GetValueType(indexObj)}'", funcExpr!.Name);
+            throw new LangException($"Function 'listSet' expects second argument to be a number, but got '{GetValueType(indexObj)}'", GetCallToken(call));
         }
 
         int index = (int)indexDouble;
         if (index < 0 || index >= list.Count)
         {
-            Expression.Variable? funcExpr = call.Callee as Expression.Variable;
-            throw new LangException($"Function 'listSet' index {index} is out of bounds for list of size {list.Count}", funcExpr!.Name);
+            throw new LangException($"Function 'listSet' index {index} is out of bounds for list of size {list.Count}", GetCallToken(call));
         }
 
         object? value = Evaluate(call.Arguments[2]);
@@ -238,29 +222,25 @@ public partial class Interpreter
     {
         if (call.Arguments.Count != 2)
         {
-            Expression.Variable? funcExpr = call.Callee as Expression.Variable;
-            throw new LangException($"Function 'listRemove' expects 2 arguments, but got {call.Arguments.Count}", funcExpr!.Name);
+            throw new LangException($"Function 'listRemove' expects 2 arguments, but got {call.Arguments.Count}", GetCallToken(call));
         }
 
         object? listObj = Evaluate(call.Arguments[0]);
         if (listObj is not List<object?> list)
         {
-            Expression.Variable? funcExpr = call.Callee as Expression.Variable;
-            throw new LangException($"Function 'listRemove' expects first argument to be a list, but got '{GetValueType(listObj)}'", funcExpr!.Name);
+            throw new LangException($"Function 'listRemove' expects first argument to be a list, but got '{GetValueType(listObj)}'", GetCallToken(call));
         }
 
         object? indexObj = Evaluate(call.Arguments[1]);
         if (indexObj is not double indexDouble)
         {
-            Expression.Variable? funcExpr = call.Callee as Expression.Variable;
-            throw new LangException($"Function 'listRemove' expects second argument to be a number, but got '{GetValueType(indexObj)}'", funcExpr!.Name);
+            throw new LangException($"Function 'listRemove' expects second argument to be a number, but got '{GetValueType(indexObj)}'", GetCallToken(call));
         }
 
         int index = (int)indexDouble;
         if (index < 0 || index >= list.Count)
         {
-            Expression.Variable? funcExpr = call.Callee as Expression.Variable;
-            throw new LangException($"Function 'listRemove' index {index} is out of bounds for list of size {list.Count}", funcExpr!.Name);
+            throw new LangException($"Function 'listRemove' index {index} is out of bounds for list of size {list.Count}", GetCallToken(call));
         }
 
         // create a copy of the list to avoid modifying the original
@@ -274,15 +254,13 @@ public partial class Interpreter
     {
         if (call.Arguments.Count != 1)
         {
-            Expression.Variable? funcExpr = call.Callee as Expression.Variable;
-            throw new LangException($"Function 'listReverse' expects 1 argument, but got {call.Arguments.Count}", funcExpr!.Name);
+            throw new LangException($"Function 'listReverse' expects 1 argument, but got {call.Arguments.Count}", GetCallToken(call));
         }
 
         object? listObj = Evaluate(call.Arguments[0]);
         if (listObj is not List<object?> list)
         {
-            Expression.Variable? funcExpr = call.Callee as Expression.Variable;
-            throw new LangException($"Function 'listReverse' expects first argument to be a list, but got '{GetValueType(listObj)}'", funcExpr!.Name);
+            throw new LangException($"Function 'listReverse' expects first argument to be a list, but got '{GetValueType(listObj)}'", GetCallToken(call));
         }
 
         // create a copy of the list to avoid modifying the original
@@ -296,22 +274,19 @@ public partial class Interpreter
     {
         if (call.Arguments.Count != 2)
         {
-            Expression.Variable? funcExpr = call.Callee as Expression.Variable;
-            throw new LangException($"Function 'listExtend' expects 2 arguments, but got {call.Arguments.Count}", funcExpr!.Name);
+            throw new LangException($"Function 'listExtend' expects 2 arguments, but got {call.Arguments.Count}", GetCallToken(call));
         }
 
         object? listObj1 = Evaluate(call.Arguments[0]);
         if (listObj1 is not List<object?> list1)
         {
-            Expression.Variable? funcExpr = call.Callee as Expression.Variable;
-            throw new LangException($"Function 'listExtend' expects first argument to be a list, but got '{GetValueType(listObj1)}'", funcExpr!.Name);
+            throw new LangException($"Function 'listExtend' expects first argument to be a list, but got '{GetValueType(listObj1)}'", GetCallToken(call));
         }
 
         object? listObj2 = Evaluate(call.Arguments[1]);
         if (listObj2 is not List<object?> list2)
         {
-            Expression.Variable? funcExpr = call.Callee as Expression.Variable;
-            throw new LangException($"Function 'listExtend' expects second argument to be a list, but got '{GetValueType(listObj2)}'", funcExpr!.Name);
+            throw new LangException($"Function 'listExtend' expects second argument to be a list, but got '{GetValueType(listObj2)}'", GetCallToken(call));
         }
 
         // create a copy of the first list to avoid modifying the original
@@ -325,8 +300,7 @@ public partial class Interpreter
     {
         if (call.Arguments.Count != 0)
         {
-            Expression.Variable? funcExpr = call.Callee as Expression.Variable;
-            throw new LangException($"Function 'clock' expects 0 arguments, but got {call.Arguments.Count}", funcExpr!.Name);
+            throw new LangException($"Function 'clock' expects 0 arguments, but got {call.Arguments.Count}", GetCallToken(call));
         }
 
         return DateTimeOffset.UtcNow.ToUnixTimeMilliseconds() / 1000.0;
@@ -336,8 +310,7 @@ public partial class Interpreter
     {
         if (call.Arguments.Count > 1)
         {
-            Expression.Variable? funcExpr = call.Callee as Expression.Variable;
-            throw new LangException($"Function 'readInput' expects 0 or 1 argument, but got {call.Arguments.Count}", funcExpr!.Name);
+            throw new LangException($"Function 'readInput' expects 0 or 1 argument, but got {call.Arguments.Count}", GetCallToken(call));
         }
 
         // if there's one argument, print it as a prompt
@@ -354,8 +327,7 @@ public partial class Interpreter
     {
         if (call.Arguments.Count != 1)
         {
-            Expression.Variable? funcExpr = call.Callee as Expression.Variable;
-            throw new LangException($"Function 'stringFrom' expects 1 argument, but got {call.Arguments.Count}", funcExpr!.Name);
+            throw new LangException($"Function 'stringFrom' expects 1 argument, but got {call.Arguments.Count}", GetCallToken(call));
         }
 
         object? argValue = Evaluate(call.Arguments[0]);
@@ -366,15 +338,13 @@ public partial class Interpreter
     {
         if (call.Arguments.Count != 1)
         {
-            Expression.Variable? funcExpr = call.Callee as Expression.Variable;
-            throw new LangException($"Function 'exit' expects 1 argument, but got {call.Arguments.Count}", funcExpr!.Name);
+            throw new LangException($"Function 'exit' expects 1 argument, but got {call.Arguments.Count}", GetCallToken(call));
         }
 
         object? argValue = Evaluate(call.Arguments[0]);
         if (argValue is not double d)
         {
-            Expression.Variable? funcExpr = call.Callee as Expression.Variable;
-            throw new LangException($"Function 'exit' expects an integer argument, but got '{GetValueType(argValue)}'", funcExpr!.Name);
+            throw new LangException($"Function 'exit' expects an integer argument, but got '{GetValueType(argValue)}'", GetCallToken(call));
         }
 
         Environment.Exit((int)d);
