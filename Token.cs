@@ -21,6 +21,7 @@ public enum TokenType
     To,
     With,
     EndFor,
+    Break,
     True,
     False,
     Nil,

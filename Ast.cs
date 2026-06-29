@@ -30,6 +30,8 @@ public abstract record Statement
 
     public record ForIn(Token Variable, JaskLang.Expression Collection, List<Statement> Body) : Statement;
 
+    public record Break() : Statement;
+
     public record Function(Token Name, List<(Token Name, Token Type)> Params, List<Statement> Body) : Statement;
 
     public record Expression(JaskLang.Expression Value) : Statement;

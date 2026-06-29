@@ -33,6 +33,7 @@ public class Lexer
         ["endstruct"] = TokenType.EndStruct,
         ["update"]   = TokenType.Update,
         ["return"]   = TokenType.Return,
+        ["break"]    = TokenType.Break,
         ["and"]      = TokenType.And,
         ["or"]       = TokenType.Or,
         ["not"]      = TokenType.Not,

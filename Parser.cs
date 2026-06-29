@@ -27,6 +27,7 @@ public class Parser(List<Token> tokens)
         if (Match(TokenType.Struct))   return StructStatement();
         if (Match(TokenType.Use))      return UseStatement();
         if (Match(TokenType.Return))   return ReturnStatement();
+        if (Match(TokenType.Break))    return new Statement.Break();
 
         // try to parse as expression statement
         return new Statement.Expression(Expression());
@@ -218,7 +219,7 @@ public class Parser(List<Token> tokens)
         // return [expression]
         Expression? value = null;
         if (!Check(TokenType.End) && !Check(TokenType.EndIf) && !Check(TokenType.EndWhile) && 
-            !Check(TokenType.EndFor) && !Check(TokenType.Else) && !IsAtEnd())
+            !Check(TokenType.EndFor) && !Check(TokenType.Else) && !Check(TokenType.Break) && !IsAtEnd())
         {
             value = Expression();
         }
