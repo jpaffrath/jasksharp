@@ -18,6 +18,7 @@ public abstract record Expression
 public abstract record Statement
 {
     public record Set(Token Name, JaskLang.Expression Value) : Statement;
+    public record SetGlobal(Token Name, JaskLang.Expression Value) : Statement;
 
     public record StructUpdate(JaskLang.Expression Source, List<(Token Field, JaskLang.Expression Value)> Updates, Token Target) : Statement;
 

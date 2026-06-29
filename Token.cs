@@ -9,6 +9,7 @@ public enum TokenType
 
     // keywords
     Set,
+    Global,
     In,
     If,
     Else,

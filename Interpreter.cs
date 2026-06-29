@@ -43,6 +43,10 @@ public partial class Interpreter
                 CurrentEnvironment[s.Name.Lexeme] = Evaluate(s.Value);
                 break;
 
+            case Statement.SetGlobal sg:
+                _globalEnvironment[sg.Name.Lexeme] = Evaluate(sg.Value);
+                break;
+
             case Statement.If i:
                 if (IsTruthy(Evaluate(i.Condition)))
                 {

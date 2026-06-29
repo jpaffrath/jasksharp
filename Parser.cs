@@ -34,7 +34,19 @@ public class Parser(List<Token> tokens)
 
     private Statement SetStatement()
     {
-        Token name = Consume(TokenType.Identifier, "Expected a variable name after 'set'");
+        Token? name = null;
+
+        // set global <name> to <value> — writes directly to global scope from functions
+        if (Match(TokenType.Global))
+        {
+            name = Consume(TokenType.Identifier, "Expected a variable name after 'set global'");
+            Consume(TokenType.To, "Expected 'to' after variable name");
+            Expression value = Expression();
+
+            return new Statement.SetGlobal(name, value);
+        }
+
+        name = Consume(TokenType.Identifier, "Expected a variable name after 'set'");
         Consume(TokenType.To, "Expected 'to' after variable name");
         Expression source = Expression();
 
