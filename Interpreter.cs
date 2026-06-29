@@ -6,6 +6,11 @@ public class ReturnException : Exception
     public ReturnException(object? value) : base() { Value = value; }
 }
 
+public class BreakException : Exception
+{
+    public BreakException() : base() { }
+}
+
 public partial class Interpreter
 {
     // dictionary for functions: "name(type1,type2,...)" -> (parameters, body)
@@ -58,57 +63,66 @@ public partial class Interpreter
                 }
                 break;
 
+            case Statement.Break:
+                throw new BreakException();
+
             case Statement.While w:
-                while (IsTruthy(Evaluate(w.Condition)))
+                try
                 {
-                    foreach (var s in w.Body) Execute(s);
+                    while (IsTruthy(Evaluate(w.Condition)))
+                    {
+                        foreach (var s in w.Body) Execute(s);
+                    }
                 }
+                catch (BreakException) { }
                 break;
 
             case Statement.For f:
                 double from = CheckNumberStmt(f.Variable, Evaluate(f.Start), "value for 'from' in loop");
                 double to   = CheckNumberStmt(f.Variable, Evaluate(f.End),   "value for 'to' in loop");
-                
-                if (from <= to)
+
+                try
                 {
-                    // ascending loop
-                    for (double i = from; i <= to; )
+                    if (from <= to)
                     {
-                        CurrentEnvironment[f.Variable.Lexeme] = i;
-                        foreach (var s in f.Body) Execute(s);
-                        
-                        if (f.Increment != null)
+                        // ascending loop
+                        for (double i = from; i <= to; )
                         {
-                            // evaluate custom increment expression with current loop variable
-                            object? result = Evaluate(f.Increment);
-                            i = CheckNumberStmt(f.Variable, result, "value for 'with' in loop");
+                            CurrentEnvironment[f.Variable.Lexeme] = i;
+                            foreach (var s in f.Body) Execute(s);
+
+                            if (f.Increment != null)
+                            {
+                                object? result = Evaluate(f.Increment);
+                                i = CheckNumberStmt(f.Variable, result, "value for 'with' in loop");
+                            }
+                            else
+                            {
+                                i++;
+                            }
                         }
-                        else
+                    }
+                    else
+                    {
+                        // descending loop
+                        for (double i = from; i >= to; )
                         {
-                            i++;
+                            CurrentEnvironment[f.Variable.Lexeme] = i;
+                            foreach (var s in f.Body) Execute(s);
+
+                            if (f.Increment != null)
+                            {
+                                object? result = Evaluate(f.Increment);
+                                i = CheckNumberStmt(f.Variable, result, "value for 'with' in loop");
+                            }
+                            else
+                            {
+                                i--;
+                            }
                         }
                     }
                 }
-                else
-                {
-                    // descending loop
-                    for (double i = from; i >= to; )
-                    {
-                        CurrentEnvironment[f.Variable.Lexeme] = i;
-                        foreach (var s in f.Body) Execute(s);
-                        
-                        if (f.Increment != null)
-                        {
-                            // evaluate custom increment expression with current loop variable
-                            object? result = Evaluate(f.Increment);
-                            i = CheckNumberStmt(f.Variable, result, "value for 'with' in loop");
-                        }
-                        else
-                        {
-                            i--;
-                        }
-                    }
-                }
+                catch (BreakException) { }
                 break;
 
             case Statement.ForIn fi:
@@ -118,11 +132,15 @@ public partial class Interpreter
                     throw new LangException($"'for...in' loop expects a list, but got '{GetValueType(collectionObj)}'", fi.Variable);
                 }
 
-                foreach (var item in list)
+                try
                 {
-                    CurrentEnvironment[fi.Variable.Lexeme] = item;
-                    foreach (var s in fi.Body) Execute(s);
+                    foreach (var item in list)
+                    {
+                        CurrentEnvironment[fi.Variable.Lexeme] = item;
+                        foreach (var s in fi.Body) Execute(s);
+                    }
                 }
+                catch (BreakException) { }
                 break;
 
             case Statement.Function f:
