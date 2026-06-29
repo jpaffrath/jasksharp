@@ -33,13 +33,19 @@ public partial class Interpreter
 
     private Token GetCallToken(Expression.Call call)
         => ((Expression.Variable)call.Callee).Name;
+    
+    private void CheckNumberOfArguments(Expression.Call call, int expected, string funcName)
+    {
+        if (call.Arguments.Count != expected)
+        {
+            throw new LangException($"Function '{funcName}' expects {expected} argument(s), but got {call.Arguments.Count}", GetCallToken(call));
+        }
+    }
 
     private object? CallInternalFunctionPrint(Expression.Call call)
     {
-        if (call.Arguments.Count < 1)
-        {
-            throw new LangException($"Function 'print' expects at least 1 argument, but got {call.Arguments.Count}", GetCallToken(call));
-        }
+        // check number of arguments (print accepts at least 1)
+        CheckNumberOfArguments(call, call.Arguments.Count, "print");
 
         // print all arguments
         var parts = new List<string>();
@@ -55,10 +61,7 @@ public partial class Interpreter
 
     private object? CallInternalFunctionType(Expression.Call call)
     {
-        if (call.Arguments.Count != 1)
-        {
-            throw new LangException($"Function 'type' expects 1 argument, but got {call.Arguments.Count}", GetCallToken(call));
-        }
+        CheckNumberOfArguments(call, 1, "type");
         
         object? value = Evaluate(call.Arguments[0]);
 
@@ -79,10 +82,7 @@ public partial class Interpreter
 
     private object? CallInternalFunctionListSize(Expression.Call call)
     {
-        if (call.Arguments.Count != 1)
-        {
-            throw new LangException($"Function 'listSize' expects 1 argument, but got {call.Arguments.Count}", GetCallToken(call));
-        }
+        CheckNumberOfArguments(call, 1, "listSize");
 
         object? listObj = Evaluate(call.Arguments[0]);
         if (listObj is not List<object?> list)
@@ -122,10 +122,7 @@ public partial class Interpreter
 
     private object? CallInternalFunctionListGet(Expression.Call call)
     {
-        if (call.Arguments.Count != 2)
-        {
-            throw new LangException($"Function 'listGet' expects 2 arguments, but got {call.Arguments.Count}", GetCallToken(call));
-        }
+        CheckNumberOfArguments(call, 2, "listGet");
 
         object? listObj = Evaluate(call.Arguments[0]);
         if (listObj is not List<object?> list)
@@ -150,10 +147,7 @@ public partial class Interpreter
 
     private object? CallInternalFunctionListGetRange(Expression.Call call)
     {
-        if (call.Arguments.Count != 3)
-        {
-            throw new LangException($"Function 'listGetRange' expects 3 arguments, but got {call.Arguments.Count}", GetCallToken(call));
-        }
+        CheckNumberOfArguments(call, 3, "listGetRange");
 
         object? listObj = Evaluate(call.Arguments[0]);
         if (listObj is not List<object?> list)
@@ -186,10 +180,7 @@ public partial class Interpreter
 
     private object? CallInternalFunctionListSet(Expression.Call call)
     {
-        if (call.Arguments.Count != 3)
-        {
-            throw new LangException($"Function 'listSet' expects 3 arguments, but got {call.Arguments.Count}", GetCallToken(call));
-        }
+        CheckNumberOfArguments(call, 3, "listSet");
 
         object? listObj = Evaluate(call.Arguments[0]);
         if (listObj is not List<object?> list)
@@ -220,10 +211,7 @@ public partial class Interpreter
 
     private object? CallInternalFunctionListRemove(Expression.Call call)
     {
-        if (call.Arguments.Count != 2)
-        {
-            throw new LangException($"Function 'listRemove' expects 2 arguments, but got {call.Arguments.Count}", GetCallToken(call));
-        }
+        CheckNumberOfArguments(call, 2, "listRemove");
 
         object? listObj = Evaluate(call.Arguments[0]);
         if (listObj is not List<object?> list)
@@ -252,10 +240,7 @@ public partial class Interpreter
 
     private object? CallInternalFunctionListReverse(Expression.Call call)
     {
-        if (call.Arguments.Count != 1)
-        {
-            throw new LangException($"Function 'listReverse' expects 1 argument, but got {call.Arguments.Count}", GetCallToken(call));
-        }
+        CheckNumberOfArguments(call, 1, "listReverse");
 
         object? listObj = Evaluate(call.Arguments[0]);
         if (listObj is not List<object?> list)
@@ -272,10 +257,7 @@ public partial class Interpreter
 
     private object? CallInternalFunctionListExtend(Expression.Call call)
     {
-        if (call.Arguments.Count != 2)
-        {
-            throw new LangException($"Function 'listExtend' expects 2 arguments, but got {call.Arguments.Count}", GetCallToken(call));
-        }
+        CheckNumberOfArguments(call, 2, "listExtend");
 
         object? listObj1 = Evaluate(call.Arguments[0]);
         if (listObj1 is not List<object?> list1)
@@ -298,10 +280,7 @@ public partial class Interpreter
 
     private object? CallInternalFunctionClock(Expression.Call call)
     {
-        if (call.Arguments.Count != 0)
-        {
-            throw new LangException($"Function 'clock' expects 0 arguments, but got {call.Arguments.Count}", GetCallToken(call));
-        }
+        CheckNumberOfArguments(call, 0, "clock");
 
         return DateTimeOffset.UtcNow.ToUnixTimeMilliseconds() / 1000.0;
     }
@@ -325,10 +304,7 @@ public partial class Interpreter
 
     private object? CallInternalFunctionStringFrom(Expression.Call call)
     {
-        if (call.Arguments.Count != 1)
-        {
-            throw new LangException($"Function 'stringFrom' expects 1 argument, but got {call.Arguments.Count}", GetCallToken(call));
-        }
+        CheckNumberOfArguments(call, 1, "stringFrom");
 
         object? argValue = Evaluate(call.Arguments[0]);
         return Stringify(argValue);
@@ -336,10 +312,7 @@ public partial class Interpreter
 
     private object? CallInternalFunctionExit(Expression.Call call)
     {
-        if (call.Arguments.Count != 1)
-        {
-            throw new LangException($"Function 'exit' expects 1 argument, but got {call.Arguments.Count}", GetCallToken(call));
-        }
+        CheckNumberOfArguments(call, 1, "exit");
 
         object? argValue = Evaluate(call.Arguments[0]);
         if (argValue is not double d)
