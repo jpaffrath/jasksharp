@@ -91,7 +91,20 @@ public partial class Interpreter
         }
 
         // evaluate arguments first so we can match overloads by compatible types
-        var argValues = call.Arguments.Select(a => Evaluate(a)).ToList();
+        // if a parameter evaluates to nil, throw an error (jask does not allow passing nil to functions)
+        var argValues = new List<object?>();
+        foreach (var arg in call.Arguments)
+        {
+            var value = Evaluate(arg);
+            if (value != null)
+            {
+                argValues.Add(value);
+            }
+            else
+            {
+                throw new LangException($"Passed parameter for function '{funcName}' evaluated to nil.", funcExpr.Name);
+            }
+        }
 
         var overloads = _functions
             .Where(kv => kv.Key.StartsWith(funcName + "("))
