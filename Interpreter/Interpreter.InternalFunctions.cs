@@ -16,6 +16,10 @@ public partial class Interpreter
         _internalFunctions["exit"]        = CallInternalFunctionExit;
         _internalFunctions["stringFrom"]  = CallInternalFunctionStringFrom;
 
+        // math functions
+        _internalFunctions["round"]       = CallInternalFunctionRound;
+        _internalFunctions["floor"]       = CallInternalFunctionFloor;
+
         // list functions
         _internalFunctions["list"]         = CallInternalFunctionList;
         _internalFunctions["listSize"]     = CallInternalFunctionListSize;
@@ -276,6 +280,38 @@ public partial class Interpreter
         newList.AddRange(list2);
 
         return newList;
+    }
+
+    private object? CallInternalFunctionRound(Expression.Call call)
+    {
+        CheckNumberOfArguments(call, 2, "round");
+
+        object? number = Evaluate(call.Arguments[0]);
+        if (number is not double d)
+        {
+            throw new LangException($"Function 'round' expects a number argument, but got '{GetValueType(number)}'", GetCallToken(call));
+        }
+
+        object? digits = Evaluate(call.Arguments[1]);
+        if (digits is not double digitsDouble)
+        {
+            throw new LangException($"Function 'round' expects a number argument for digits, but got '{GetValueType(digits)}'", GetCallToken(call));
+        }
+
+        return Math.Round(d, (int)digitsDouble);
+    }
+
+    private object? CallInternalFunctionFloor(Expression.Call call)
+    {
+        CheckNumberOfArguments(call, 1, "floor");
+
+        object? number = Evaluate(call.Arguments[0]);
+        if (number is not double d)
+        {
+            throw new LangException($"Function 'floor' expects a number argument, but got '{GetValueType(number)}'", GetCallToken(call));
+        }
+
+        return Math.Floor(d);
     }
 
     private object? CallInternalFunctionClock(Expression.Call call)
