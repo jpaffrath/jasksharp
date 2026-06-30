@@ -74,8 +74,30 @@ public class Lexer
             case '%': AddToken(TokenType.Modulo); break;
             case '/': AddToken(TokenType.Slash); break;
             case ';':
-                // ignore comments until the end of the line
-                while (Peek() != '\n' && !IsAtEnd()) Advance();
+                if (Match(';'))
+                {
+                    // Comments multiline - ignore everything in between ;; and ;;
+                    while (!IsAtEnd())
+                    {
+                        if (Peek() == '\n')
+                        {
+                            _line++;
+                        }
+
+                        if (Peek() == ';' && PeekNext() == ';')
+                        {
+                            Advance(); // consume first ';'
+                            Advance(); // consume second ';'
+                            break;
+                        }
+                        Advance();
+                    }
+                }
+                else
+                {
+                    // Comments singleline: ignore everything until the end of the line
+                    while (Peek() != '\n' && !IsAtEnd()) Advance();
+                }
                 break;
             case '=':
                 if (Match('=')) AddToken(TokenType.EqualEqual);
