@@ -15,6 +15,7 @@ public partial class Interpreter
         _internalFunctions["clock"]       = CallInternalFunctionClock;
         _internalFunctions["exit"]        = CallInternalFunctionExit;
         _internalFunctions["stringFrom"]  = CallInternalFunctionStringFrom;
+        _internalFunctions["assert"]      = CallInternalFunctionAssert;
 
         // math functions
         _internalFunctions["round"]       = CallInternalFunctionRound;
@@ -361,4 +362,23 @@ public partial class Interpreter
         // this line will never be reached
         return null;
     }
+
+    private object? CallInternalFunctionAssert(Expression.Call call)
+    {
+        CheckNumberOfArguments(call, 1, "assert");
+
+        object? argValue = Evaluate(call.Arguments[0]);
+        if (argValue is not bool b)
+        {
+            throw new LangException($"Function 'assert' expects a condition, but got '{GetValueType(argValue)}'", GetCallToken(call));
+        }
+
+        if (b == false)
+        {
+            throw new LangException($"Assertion failed", GetCallToken(call));
+        }
+
+        return null;
+    }
+
 }
