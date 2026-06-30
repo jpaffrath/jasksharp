@@ -1,0 +1,48 @@
+; jask date implementation
+
+struct Date
+    set day to 0
+    set month to 0
+    set year to 0
+endstruct
+
+function checkIfYearIsLeapYear(year: number) return ((year % 4 == 0 and year % 100 != 0) or (year % 400 == 0)) end
+
+; consumes elapsed seconds since the 01.01.1970
+; returns a Date struct
+function getDateFromElapsedSeconds(elapsedSeconds: number)
+    set secondsPerDay to 86400
+    set remainingDays to floor(elapsedSeconds / secondsPerDay)
+    set year to 1970
+
+    while true
+        set daysInThisYear to 365
+        if checkIfYearIsLeapYear(year) == true
+            set daysInThisYear to 366
+        endif
+
+        if remainingDays >= daysInThisYear
+            set remainingDays to remainingDays - daysInThisYear
+            set year to year + 1
+        else break
+        endif
+    endwhile
+
+    set numberOfDaysPerMonth to list(31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31)
+    if checkIfYearIsLeapYear(year)
+        set numberOfDaysPerMonth to listSet(numberOfDaysPerMonth, 2, 29)
+    endif
+
+    set month to 0
+    while true
+        set daysInThisMonth to listGet(numberOfDaysPerMonth, month)
+
+        if remainingDays >= daysInThisMonth
+            set remainingDays to remainingDays - daysInThisMonth
+            set month to month + 1
+        else break
+        endif
+    endwhile
+
+    return Date(year = year, month = month + 1, day = remainingDays + 1)
+end
