@@ -46,3 +46,28 @@ function getDateFromElapsedSeconds(elapsedSeconds: number)
 
     return Date(year = year, month = month + 1, day = remainingDays + 1)
 end
+
+function stringFrom(date: Date)
+    set dateString to date->year + "-"
+
+    if date->month < 10
+        set dateString to dateString + "0"
+    endif
+
+    set dateString to dateString + date->month + "-"
+
+    if date->day < 10
+        set dateString to dateString + "0"
+    endif
+
+   return dateString + date->day
+end
+
+function print(date: Date)
+    print(stringFrom(date))
+end
+
+function printLine(date: Date)
+    print(date)
+    print("\n")
+end
