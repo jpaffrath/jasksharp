@@ -9,7 +9,7 @@ public class Parser(List<Token> tokens)
     {
         var statements = new List<Statement>();
 
-        while (!IsAtEnd())
+        while (IsAtEnd() == false)
         {
             statements.Add(Statement());
         }
@@ -76,7 +76,7 @@ public class Parser(List<Token> tokens)
 
         // run until "else" or "endif"
         var thenBranch = new List<Statement>();
-        while (!Check(TokenType.Else) && !Check(TokenType.EndIf) && !IsAtEnd())
+        while (Check(TokenType.Else) == false && Check(TokenType.EndIf) == false && IsAtEnd() == false)
         {
             thenBranch.Add(Statement());
         }
@@ -102,7 +102,7 @@ public class Parser(List<Token> tokens)
         Expression condition = Expression();
 
         var body = new List<Statement>();
-        while (!Check(TokenType.EndWhile) && !IsAtEnd())
+        while (Check(TokenType.EndWhile) == false && IsAtEnd() == false)
         {
             body.Add(Statement());
         }
@@ -119,7 +119,7 @@ public class Parser(List<Token> tokens)
         // for <variable> in <collection>
         Token variable = Consume(TokenType.Identifier, "Expected a variable name after 'for'");
         var body = new List<Statement>();
-        
+
         // Check if it's a "for...in" loop
         if (Check(TokenType.In))
         {
@@ -127,7 +127,7 @@ public class Parser(List<Token> tokens)
             Advance();
             Expression collection = Expression();
 
-            while (!Check(TokenType.EndFor) && !IsAtEnd())
+            while (Check(TokenType.EndFor) == false && IsAtEnd() == false)
             {
                 body.Add(Statement());
             }
@@ -139,7 +139,7 @@ public class Parser(List<Token> tokens)
 
         // Traditional "for...from...to" loop
         Consume(TokenType.From, "Expected 'from' after the variable name");
-        
+
         Expression start = Expression();
         Consume(TokenType.To, "Expected 'to' after the start value");
         Expression end = Expression();
@@ -151,7 +151,7 @@ public class Parser(List<Token> tokens)
             increment = Expression();
         }
 
-        while (!Check(TokenType.EndFor) && !IsAtEnd())
+        while (Check(TokenType.EndFor) == false && IsAtEnd() == false)
         {
             body.Add(Statement());
         }

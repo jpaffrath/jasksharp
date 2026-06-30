@@ -10,33 +10,34 @@ public class Lexer
 
     private static readonly Dictionary<string, TokenType> Keywords = new()
     {
-        ["set"]      = TokenType.Set,
-        ["global"]   = TokenType.Global,
-        ["in"]       = TokenType.In,
-        ["if"]       = TokenType.If,
-        ["else"]     = TokenType.Else,
-        ["endif"]    = TokenType.EndIf,
-        ["while"]    = TokenType.While,
-        ["endwhile"] = TokenType.EndWhile,
-        ["for"]      = TokenType.For,
-        ["from"]     = TokenType.From,
-        ["to"]       = TokenType.To,
-        ["with"]     = TokenType.With,
-        ["endfor"]   = TokenType.EndFor,
-        ["true"]     = TokenType.True,
-        ["false"]    = TokenType.False,
-        ["nil"]      = TokenType.Nil,
-        ["function"] = TokenType.Function,
-        ["use"]      = TokenType.Use,
-        ["end"]      = TokenType.End,
+        ["set"]       = TokenType.Set,
+        ["global"]    = TokenType.Global,
+        ["in"]        = TokenType.In,
+        ["if"]        = TokenType.If,
+        ["else"]      = TokenType.Else,
+        ["endif"]     = TokenType.EndIf,
+        ["while"]     = TokenType.While,
+        ["endwhile"]  = TokenType.EndWhile,
+        ["for"]       = TokenType.For,
+        ["from"]      = TokenType.From,
+        ["to"]        = TokenType.To,
+        ["with"]      = TokenType.With,
+        ["endfor"]    = TokenType.EndFor,
+        ["true"]      = TokenType.True,
+        ["false"]     = TokenType.False,
+        ["nil"]       = TokenType.Nil,
+        ["function"]  = TokenType.Function,
+        ["use"]       = TokenType.Use,
+        ["as"]        = TokenType.As,
+        ["end"]       = TokenType.End,
         ["struct"]    = TokenType.Struct,
         ["endstruct"] = TokenType.EndStruct,
-        ["update"]   = TokenType.Update,
-        ["return"]   = TokenType.Return,
-        ["break"]    = TokenType.Break,
-        ["and"]      = TokenType.And,
-        ["or"]       = TokenType.Or,
-        ["not"]      = TokenType.Not,
+        ["update"]    = TokenType.Update,
+        ["return"]    = TokenType.Return,
+        ["break"]     = TokenType.Break,
+        ["and"]       = TokenType.And,
+        ["or"]        = TokenType.Or,
+        ["not"]       = TokenType.Not,
     };
 
     public Lexer(string source)
@@ -46,7 +47,7 @@ public class Lexer
 
     public List<Token> ScanTokens()
     {
-        while (!IsAtEnd())
+        while (IsAtEnd() == false)
         {
             _start = _current;
             ScanToken();
@@ -77,7 +78,7 @@ public class Lexer
                 if (Match(';'))
                 {
                     // Comments multiline - ignore everything in between ;; and ;;
-                    while (!IsAtEnd())
+                    while (IsAtEnd() == false)
                     {
                         if (Peek() == '\n')
                         {
@@ -96,16 +97,24 @@ public class Lexer
                 else
                 {
                     // Comments singleline: ignore everything until the end of the line
-                    while (Peek() != '\n' && !IsAtEnd()) Advance();
+                    while (Peek() != '\n' && !IsAtEnd())
+                    {
+                        Advance();
+                    }
                 }
                 break;
             case '=':
-                if (Match('=')) AddToken(TokenType.EqualEqual);
-                else AddToken(TokenType.Assign);
+                AddToken(Match('=') ? TokenType.EqualEqual : TokenType.Assign);
                 break;
             case '!':
-                if (Match('=')) AddToken(TokenType.BangEqual);
-                else throw new LangException("Unexpected character '!'.", _line);
+                if (Match('='))
+                {
+                    AddToken(TokenType.BangEqual);
+                }
+                else
+                {
+                    throw new LangException("Unexpected character '!'.", _line);
+                }
                 break;
             case '<':
                 AddToken(Match('=') ? TokenType.LessEqual : TokenType.Less);
@@ -142,27 +151,33 @@ public class Lexer
 
     private void ScanString()
     {
-        while (Peek() != '"' && !IsAtEnd())
+        while (Peek() != '"' && IsAtEnd() == false)
         {
-            if (Peek() == '\n') _line++;
+            if (Peek() == '\n')
+            {
+                _line++;
+            }
             Advance();
         }
 
         if (IsAtEnd())
+        {
             throw new LangException("Unclosed string.", _line);
+        }
 
         // closing "
         Advance();
 
         string rawValue = _source.Substring(_start + 1, _current - _start - 2);
         string value = ProcessEscapeSequences(rawValue);
+
         AddToken(TokenType.String, value);
     }
 
     private string ProcessEscapeSequences(string str)
     {
         var result = new System.Text.StringBuilder();
-        
+
         for (int i = 0; i < str.Length; i++)
         {
             if (str[i] == '\\' && i + 1 < str.Length)
@@ -199,18 +214,25 @@ public class Lexer
                 result.Append(str[i]);
             }
         }
-        
+
         return result.ToString();
     }
 
     private void ScanNumber()
     {
-        while (char.IsDigit(Peek())) Advance();
+        while (char.IsDigit(Peek()))
+        {
+            Advance();
+        }
 
         if (Peek() == '.' && char.IsDigit(PeekNext()))
         {
             Advance();
-            while (char.IsDigit(Peek())) Advance();
+
+            while (char.IsDigit(Peek()))
+            {
+                Advance();
+            }
         }
 
         string text = _source.Substring(_start, _current - _start);
@@ -219,7 +241,10 @@ public class Lexer
 
     private void ScanIdentifier()
     {
-        while (char.IsLetterOrDigit(Peek()) || Peek() == '_') Advance();
+        while (char.IsLetterOrDigit(Peek()) || Peek() == '_')
+        {
+            Advance();
+        }
 
         string text = _source.Substring(_start, _current - _start);
         TokenType type = Keywords.TryGetValue(text, out var kw) ? kw : TokenType.Identifier;
@@ -228,8 +253,13 @@ public class Lexer
 
     private bool Match(char expected)
     {
-        if (IsAtEnd() || _source[_current] != expected) return false;
+        if (IsAtEnd() || _source[_current] != expected)
+        {
+            return false;
+        }
+
         _current++;
+
         return true;
     }
 

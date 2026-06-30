@@ -50,12 +50,17 @@ static void RunInteractiveMode()
 {
     Console.WriteLine("jask interpreter version 2.0.0");
     var interpreter = new Interpreter();
-    
+
     while (true)
     {
         Console.Write("jask ~> ");
+
         string? line = Console.ReadLine();
-        if (line is null || line.Trim() == "exit") break;
+        if (line is null || line.Trim() == "exit")
+        {
+            break;
+        }
+
         Run(interpreter, line);
     }
 }
