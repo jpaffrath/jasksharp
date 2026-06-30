@@ -19,6 +19,12 @@ public partial class Interpreter
     // dictionary for struct definitions: name -> body statements
     private readonly Dictionary<string, List<Statement>> _structs = [];
 
+    // dictionary for imported modules: alias -> isolated interpreter instance running that module
+    private readonly Dictionary<string, Interpreter> _modules = [];
+
+    // tracks module file paths currently being loaded (by full path), to detect circular 'use' chains
+    private readonly HashSet<string> _modulesLoading;
+
     // stack for environments to manage scopes
     private readonly Stack<Dictionary<string, object?>> _scopes = new();
     
@@ -26,8 +32,14 @@ public partial class Interpreter
 
     private Dictionary<string, object?> CurrentEnvironment => _scopes.Peek();
 
-    public Interpreter()
+    public Interpreter() : this(new HashSet<string>())
     {
+    }
+
+    // internal constructor used when loading a module, so the circular-import guard is shared across the whole chain
+    private Interpreter(HashSet<string> modulesLoading)
+    {
+        _modulesLoading = modulesLoading;
         _scopes.Push(_globalEnvironment);
         initInternalFunctions();
     }
@@ -185,18 +197,38 @@ public partial class Interpreter
                 }
 
                 string modulePath = (string)value;
+                string fullPath = Path.GetFullPath(modulePath);
 
-                if (File.Exists(modulePath) == false)
+                if (File.Exists(fullPath) == false)
                 {
                     throw new LangException($"Module at '{modulePath}' could not be loaded");
                 }
-                else
+
+                if (_modulesLoading.Contains(fullPath))
                 {
+                    throw new LangException($"Circular 'use' detected: module '{modulePath}' is already being loaded", u.Alias);
+                }
+
+                if (_modules.ContainsKey(u.Alias.Lexeme))
+                {
+                    throw new LangException($"Module alias '{u.Alias.Lexeme}' is already in use", u.Alias);
+                }
+
+                _modulesLoading.Add(fullPath);
+                try
+                {
+                    var moduleInterpreter = new Interpreter(_modulesLoading);
                     var lexer = new Lexer(File.ReadAllText(modulePath));
                     var tokens = lexer.ScanTokens();
                     var parser = new Parser(tokens);
-                    var statements = parser.Parse();
-                    Interpret(statements);
+                    var moduleStatements = parser.Parse();
+                    moduleInterpreter.Interpret(moduleStatements);
+
+                    _modules[u.Alias.Lexeme] = moduleInterpreter;
+                }
+                finally
+                {
+                    _modulesLoading.Remove(fullPath);
                 }
                 break;
 

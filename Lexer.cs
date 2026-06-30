@@ -64,7 +64,9 @@ public class Lexer
         {
             case '(': AddToken(TokenType.LParen); break;
             case ')': AddToken(TokenType.RParen); break;
-            case ':': AddToken(TokenType.Colon); break;
+            case ':':
+                AddToken(Match(':') ? TokenType.ColonColon : TokenType.Colon);
+                break;
             case ',': AddToken(TokenType.Comma); break;
             case '+': AddToken(TokenType.Plus); break;
             case '-':

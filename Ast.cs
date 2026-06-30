@@ -10,6 +10,8 @@ public abstract record Expression
     public record Grouping(Expression Inner) : Expression;
     public record Call(Expression Callee, List<Expression> Arguments) : Expression;
     public record NamedCall(Token Name, List<(Token ParamName, JaskLang.Expression Value)> Args) : Expression;
+    public record ModuleCall(Token ModuleAlias, Token Name, List<Expression> Arguments) : Expression;
+    public record ModuleNamedCall(Token ModuleAlias, Token Name, List<(Token ParamName, JaskLang.Expression Value)> Args) : Expression;
     public record StructCall(Token Name, List<(Token Field, JaskLang.Expression Value)> FieldInits) : Expression;
     public record MemberAccess(Token StructName, Token Member) : Expression;
 }
@@ -36,7 +38,7 @@ public abstract record Statement
 
     public record Expression(JaskLang.Expression Value) : Statement;
 
-    public record Use(JaskLang.Expression Value) : Statement;
+    public record Use(JaskLang.Expression Value, Token Alias) : Statement;
 
     public record Return(JaskLang.Expression? Value) : Statement;
 

@@ -13,6 +13,8 @@ public partial class Interpreter
             Expression.Binary       b => EvaluateShortCircuit(b),
             Expression.Call         c => EvaluateCall(c),
             Expression.NamedCall   nc => EvaluateNamedCall(nc),
+            Expression.ModuleCall  mc => EvaluateModuleCall(mc),
+            Expression.ModuleNamedCall mnc => EvaluateModuleNamedCall(mnc),
             Expression.StructCall  sc => EvaluateStructCall(sc),
             Expression.MemberAccess m => EvaluateMemberAccess(m),
             _ => throw new LangException($"Unknown expression: {expression}")
@@ -37,6 +39,42 @@ public partial class Interpreter
         }
 
         return EvaluateBinary(b);
+    }
+
+    private object? EvaluateModuleCall(Expression.ModuleCall call)
+    {
+        if (_modules.TryGetValue(call.ModuleAlias.Lexeme, out var module) == false)
+        {
+            throw new LangException(
+                $"Unknown module '{call.ModuleAlias.Lexeme}'. Did you forget a 'use ... as {call.ModuleAlias.Lexeme}' statement?",
+                call.ModuleAlias);
+        }
+
+        // arguments are expressions written in the callers scope, so evaluate them here first,
+        // then hand the modules own interpreter already-evaluated values wrapped as literals
+        var evaluatedArgs = call.Arguments
+            .Select(a => (Expression)new Expression.Literal(Evaluate(a)))
+            .ToList();
+
+        var innerCall = new Expression.Call(new Expression.Variable(call.Name), evaluatedArgs);
+        return module.EvaluateCall(innerCall);
+    }
+
+    private object? EvaluateModuleNamedCall(Expression.ModuleNamedCall call)
+    {
+        if (_modules.TryGetValue(call.ModuleAlias.Lexeme, out var module) == false)
+        {
+            throw new LangException(
+                $"Unknown module '{call.ModuleAlias.Lexeme}'. Did you forget a 'use ... as {call.ModuleAlias.Lexeme}' statement?",
+                call.ModuleAlias);
+        }
+
+        var evaluatedArgs = call.Args
+            .Select(a => (a.ParamName, Value: (Expression)new Expression.Literal(Evaluate(a.Value))))
+            .ToList();
+
+        var innerCall = new Expression.NamedCall(call.Name, evaluatedArgs);
+        return module.EvaluateNamedCall(innerCall);
     }
 
     private object? EvaluateCall(Expression.Call call)

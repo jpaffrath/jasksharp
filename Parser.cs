@@ -168,12 +168,13 @@ public class Parser(List<Token> tokens)
         Consume(TokenType.LParen, "Expected '(' after function name");
 
         var parameters = new List<(Token Name, Token Type)>();
-        if (!Check(TokenType.RParen))
+        if (Check(TokenType.RParen) == false)
         {
             do
             {
                 Token paramName = Consume(TokenType.Identifier, "Expected parameter name");
                 Consume(TokenType.Colon, "Expected ':' after parameter name");
+
                 Token paramType = Consume(TokenType.Identifier, "Expected parameter type");
                 parameters.Add((paramName, paramType));
             }
@@ -183,7 +184,7 @@ public class Parser(List<Token> tokens)
         Consume(TokenType.RParen, "Expected ')' after parameters");
 
         var body = new List<Statement>();
-        while (!Check(TokenType.End) && !IsAtEnd())
+        while (Check(TokenType.End) == false && IsAtEnd() == false)
         {
             body.Add(Statement());
         }
@@ -198,7 +199,7 @@ public class Parser(List<Token> tokens)
         Token name = Consume(TokenType.Identifier, "Expected a struct name after 'struct'");
 
         var body = new List<Statement>();
-        while (!Check(TokenType.EndStruct) && !IsAtEnd())
+        while (Check(TokenType.EndStruct) == false && IsAtEnd() == false)
         {
             body.Add(Statement());
         }
@@ -211,15 +212,23 @@ public class Parser(List<Token> tokens)
     private Statement UseStatement()
     {
         Expression modulePath = Expression();
-        return new Statement.Use(modulePath);
+        Consume(TokenType.As, "Expected 'as' after module path in 'use' statement");
+        Token alias = Consume(TokenType.Identifier, "Expected a module alias after 'as'");
+
+        return new Statement.Use(modulePath, alias);
     }
 
     private Statement ReturnStatement()
     {
         // return [expression]
         Expression? value = null;
-        if (!Check(TokenType.End) && !Check(TokenType.EndIf) && !Check(TokenType.EndWhile) && 
-            !Check(TokenType.EndFor) && !Check(TokenType.Else) && !Check(TokenType.Break) && !IsAtEnd())
+        if (Check(TokenType.End)      == false &&
+            Check(TokenType.EndIf)    == false &&
+            Check(TokenType.EndWhile) == false && 
+            Check(TokenType.EndFor)   == false &&
+            Check(TokenType.Else)     == false &&
+            Check(TokenType.Break)    == false &&
+            IsAtEnd()                 == false)
         {
             value = Expression();
         }
@@ -342,10 +351,47 @@ public class Parser(List<Token> tokens)
     {
         Expression expr = Primary();
 
+        // detect module-qualified call: module::function(...)
+        if (expr is Expression.Variable moduleAlias && Match(TokenType.ColonColon))
+        {
+            Token funcName = Consume(TokenType.Identifier, "Expected a function name after '::'");
+            Consume(TokenType.LParen, "Expected '(' after module function name");
+
+            // detect named-argument module call: module::function(param = value, ...)
+            if (Check(TokenType.RParen) == false && CheckNext(TokenType.Assign))
+            {
+                var namedArgs = new List<(Token ParamName, Expression Value)>();
+                do
+                {
+                    Token paramName = Consume(TokenType.Identifier, "Expected a parameter name");
+                    Consume(TokenType.Assign, "Expected '=' after parameter name");
+                    Expression value = Expression();
+                    namedArgs.Add((paramName, value));
+                }
+                while (Match(TokenType.Comma));
+
+                Consume(TokenType.RParen, "Expected ')' after named arguments");
+                return new Expression.ModuleNamedCall(moduleAlias.Name, funcName, namedArgs);
+            }
+
+            var moduleArgs = new List<Expression>();
+            if (Check(TokenType.RParen) == false)
+            {
+                do
+                {
+                    moduleArgs.Add(Expression());
+                }
+                while (Match(TokenType.Comma));
+            }
+
+            Consume(TokenType.RParen, "Expected ')' after arguments");
+            return new Expression.ModuleCall(moduleAlias.Name, funcName, moduleArgs);
+        }
+
         while (Match(TokenType.LParen))
         {
             // detect named-argument call: Name(param = value, ...)
-            if (expr is Expression.Variable callee && !Check(TokenType.RParen) && CheckNext(TokenType.Assign))
+            if (expr is Expression.Variable callee && Check(TokenType.RParen) == false && CheckNext(TokenType.Assign))
             {
                 var namedArgs = new List<(Token ParamName, Expression Value)>();
                 do
@@ -363,7 +409,7 @@ public class Parser(List<Token> tokens)
 
             // regular call
             var arguments = new List<Expression>();
-            if (!Check(TokenType.RParen))
+            if (Check(TokenType.RParen) == false)
             {
                 do
                 {
@@ -394,6 +440,7 @@ public class Parser(List<Token> tokens)
                 Token member = Consume(TokenType.Identifier, "Expected a member name after '->'");
                 return new Expression.MemberAccess(ident, member);
             }
+
             return new Expression.Variable(ident);
         }
 
@@ -401,6 +448,7 @@ public class Parser(List<Token> tokens)
         {
             Expression expr = Expression();
             Consume(TokenType.RParen, "Expected ')' after expression");
+
             return new Expression.Grouping(expr);
         }
 
@@ -416,6 +464,7 @@ public class Parser(List<Token> tokens)
             if (Check(type))
             {
                 Advance();
+
                 return true;
             }
         }
@@ -430,12 +479,17 @@ public class Parser(List<Token> tokens)
     private Token Advance()
     {
         if (IsAtEnd() == false) _current++;
+
         return Previous();
     }
 
     private Token Consume(TokenType type, string message)
     {
-        if (Check(type)) return Advance();
+        if (Check(type))
+        {
+            return Advance();
+        }
+
         throw Error(Peek(), message);
     }
 
@@ -448,6 +502,7 @@ public class Parser(List<Token> tokens)
     private LangException Error(Token token, string message)
     {
         string where = token.Type == TokenType.Eof ? "at the end of the file" : $"at '{token.Lexeme}'";
+
         return new LangException($"Syntax Error {where}: {message}", token);
     }
 }
