@@ -16,6 +16,9 @@
 # Introduction
 
 jask is a highly readable interpreter language in early development. The jask interpreter is fully written in C# without other dependencies. It is just a hobby project for fun and learning. Contributions are always welcome!
+The main goal is to keep the interpreter as small as possible and to implement only those functions that are truly necessary or that affect performance.
+All other functions should be written directly in jask to explore and expand the language's capabilities.
+A collection of useful libraries written in jask can be found at [jcore](https://github.com/jpaffrath/jasksharp/tree/main/jcore).
 
 Seeing jask for the the first time? Try the [Getting started guide](https://github.com/jpaffrath/jasksharp/wiki/Getting-started)! For further information, please visit the [Wiki](https://github.com/jpaffrath/jasksharp/wiki).
 
