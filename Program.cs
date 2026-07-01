@@ -1,13 +1,13 @@
 using JaskLang;
 
-static void Run(Interpreter interpreter, string source)
+static void Run(Interpreter interpreter, string source, string? filePath = null)
 {
     try
     {
-        var lexer = new Lexer(source);
+        var lexer = new Lexer(source, filePath);
         var tokens = lexer.ScanTokens();
 
-        var parser = new Parser(tokens);
+        var parser = new Parser(tokens, filePath);
         var statements = parser.Parse();
 
         interpreter.Interpret(statements);
@@ -41,7 +41,7 @@ if (args.Length == 1)
 
     string fullPath = Path.GetFullPath(file);
     string baseDirectory = Path.GetDirectoryName(fullPath) ?? Directory.GetCurrentDirectory();
-    Run(new Interpreter(baseDirectory), File.ReadAllText(fullPath));
+    Run(new Interpreter(baseDirectory, fullPath), File.ReadAllText(fullPath), fullPath);
 }
 else
 {

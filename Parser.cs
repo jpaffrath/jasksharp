@@ -1,8 +1,9 @@
 namespace JaskLang;
 
-public class Parser(List<Token> tokens)
+public class Parser(List<Token> tokens, string? filePath = null)
 {
     private readonly List<Token> _tokens = tokens;
+    private readonly string? _filePath = filePath;
     private int _current = 0;
 
     public List<Statement> Parse()
@@ -503,6 +504,6 @@ public class Parser(List<Token> tokens)
     {
         string where = token.Type == TokenType.Eof ? "at the end of the file" : $"at '{token.Lexeme}'";
 
-        return new LangException($"Syntax Error {where}: {message}", token);
+        return new LangException($"Syntax Error {where}: {message}", token, _filePath);
     }
 }

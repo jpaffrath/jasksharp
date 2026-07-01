@@ -3,6 +3,7 @@ namespace JaskLang;
 public class Lexer
 {
     private readonly string _source;
+    private readonly string? _filePath;
     private readonly List<Token> _tokens = [];
     private int _start = 0;
     private int _current = 0;
@@ -40,9 +41,10 @@ public class Lexer
         ["not"]       = TokenType.Not,
     };
 
-    public Lexer(string source)
+    public Lexer(string source, string? filePath = null)
     {
         _source = source;
+        _filePath = filePath;
     }
 
     public List<Token> ScanTokens()
@@ -115,7 +117,7 @@ public class Lexer
                 }
                 else
                 {
-                    throw new LangException("Unexpected character '!'.", _line);
+                    throw new LangException("Unexpected character '!'.", _line, _filePath);
                 }
                 break;
             case '<':
@@ -145,7 +147,7 @@ public class Lexer
                 }
                 else
                 {
-                    throw new LangException($"Unknown character '{c}'.", _line);
+                    throw new LangException($"Unknown character '{c}'.", _line, _filePath);
                 }
                 break;
         }
@@ -164,7 +166,7 @@ public class Lexer
 
         if (IsAtEnd())
         {
-            throw new LangException("Unclosed string.", _line);
+            throw new LangException("Unclosed string.", _line, _filePath);
         }
 
         // closing "

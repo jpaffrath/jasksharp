@@ -28,6 +28,9 @@ public partial class Interpreter
     // base directory used to resolve relative module paths
     private readonly string _baseDirectory;
 
+    // current file path for error reporting
+    private readonly string? _filePath;
+
     // stack for environments to manage scopes
     private readonly Stack<Dictionary<string, object?>> _scopes = new();
     
@@ -35,19 +38,18 @@ public partial class Interpreter
 
     private Dictionary<string, object?> CurrentEnvironment => _scopes.Peek();
 
-    public Interpreter() : this(new HashSet<string>(), Directory.GetCurrentDirectory())
-    {
-    }
+    public Interpreter() : this(new HashSet<string>(), Directory.GetCurrentDirectory(), null) { }
 
-    public Interpreter(string baseDirectory) : this(new HashSet<string>(), baseDirectory)
-    {
-    }
+    public Interpreter(string baseDirectory) : this(new HashSet<string>(), baseDirectory, null) { }
+
+    public Interpreter(string baseDirectory, string? filePath) : this(new HashSet<string>(), baseDirectory, filePath) { }
 
     // internal constructor used when loading a module, so the circular-import guard is shared across the whole chain
-    private Interpreter(HashSet<string> modulesLoading, string baseDirectory)
+    private Interpreter(HashSet<string> modulesLoading, string baseDirectory, string? filePath)
     {
         _modulesLoading = modulesLoading;
         _baseDirectory = baseDirectory;
+        _filePath = filePath;
         _scopes.Push(_globalEnvironment);
         initInternalFunctions();
     }
@@ -209,26 +211,26 @@ public partial class Interpreter
 
                 if (File.Exists(fullPath) == false)
                 {
-                    throw new LangException($"Module at '{modulePath}' could not be found");
+                    throw new LangException($"Module at '{modulePath}' could not be found", u.Alias, _filePath);
                 }
 
                 if (_modulesLoading.Contains(fullPath))
                 {
-                    throw new LangException($"Circular 'use' detected: module '{modulePath}' is already being loaded", u.Alias);
+                    throw new LangException($"Circular 'use' detected: module '{modulePath}' is already being loaded", u.Alias, _filePath);
                 }
 
                 if (_modules.ContainsKey(u.Alias.Lexeme))
                 {
-                    throw new LangException($"Module alias '{u.Alias.Lexeme}' is already in use", u.Alias);
+                    throw new LangException($"Module alias '{u.Alias.Lexeme}' is already in use", u.Alias, _filePath);
                 }
 
                 _modulesLoading.Add(fullPath);
                 try
                 {
-                    var moduleInterpreter = new Interpreter(_modulesLoading, Path.GetDirectoryName(fullPath) ?? _baseDirectory);
-                    var lexer = new Lexer(File.ReadAllText(fullPath));
+                    var moduleInterpreter = new Interpreter(_modulesLoading, Path.GetDirectoryName(fullPath) ?? _baseDirectory, fullPath);
+                    var lexer = new Lexer(File.ReadAllText(fullPath), fullPath);
                     var tokens = lexer.ScanTokens();
-                    var parser = new Parser(tokens);
+                    var parser = new Parser(tokens, fullPath);
                     var moduleStatements = parser.Parse();
                     moduleInterpreter.Interpret(moduleStatements);
 
@@ -245,7 +247,7 @@ public partial class Interpreter
                 throw new ReturnException(returnValue);
 
             default:
-                throw new LangException($"Unknown statement: {statement}");
+                throw new LangException($"Unknown statement: {statement}", 0, _filePath);
         }
     }
 
