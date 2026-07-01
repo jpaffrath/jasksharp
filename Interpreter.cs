@@ -25,6 +25,9 @@ public partial class Interpreter
     // tracks module file paths currently being loaded (by full path), to detect circular 'use' chains
     private readonly HashSet<string> _modulesLoading;
 
+    // base directory used to resolve relative module paths
+    private readonly string _baseDirectory;
+
     // stack for environments to manage scopes
     private readonly Stack<Dictionary<string, object?>> _scopes = new();
     
@@ -32,14 +35,19 @@ public partial class Interpreter
 
     private Dictionary<string, object?> CurrentEnvironment => _scopes.Peek();
 
-    public Interpreter() : this(new HashSet<string>())
+    public Interpreter() : this(new HashSet<string>(), Directory.GetCurrentDirectory())
+    {
+    }
+
+    public Interpreter(string baseDirectory) : this(new HashSet<string>(), baseDirectory)
     {
     }
 
     // internal constructor used when loading a module, so the circular-import guard is shared across the whole chain
-    private Interpreter(HashSet<string> modulesLoading)
+    private Interpreter(HashSet<string> modulesLoading, string baseDirectory)
     {
         _modulesLoading = modulesLoading;
+        _baseDirectory = baseDirectory;
         _scopes.Push(_globalEnvironment);
         initInternalFunctions();
     }
@@ -197,11 +205,11 @@ public partial class Interpreter
                 }
 
                 string modulePath = (string)value;
-                string fullPath = Path.GetFullPath(modulePath);
+                string fullPath = ResolveModulePath(modulePath);
 
                 if (File.Exists(fullPath) == false)
                 {
-                    throw new LangException($"Module at '{modulePath}' could not be loaded");
+                    throw new LangException($"Module at '{modulePath}' could not be found");
                 }
 
                 if (_modulesLoading.Contains(fullPath))
@@ -217,8 +225,8 @@ public partial class Interpreter
                 _modulesLoading.Add(fullPath);
                 try
                 {
-                    var moduleInterpreter = new Interpreter(_modulesLoading);
-                    var lexer = new Lexer(File.ReadAllText(modulePath));
+                    var moduleInterpreter = new Interpreter(_modulesLoading, Path.GetDirectoryName(fullPath) ?? _baseDirectory);
+                    var lexer = new Lexer(File.ReadAllText(fullPath));
                     var tokens = lexer.ScanTokens();
                     var parser = new Parser(tokens);
                     var moduleStatements = parser.Parse();
@@ -239,5 +247,21 @@ public partial class Interpreter
             default:
                 throw new LangException($"Unknown statement: {statement}");
         }
+    }
+
+    private string ResolveModulePath(string modulePath)
+    {
+        if (Path.IsPathRooted(modulePath))
+        {
+            return Path.GetFullPath(modulePath);
+        }
+
+        string relativeCandidate = Path.GetFullPath(Path.Combine(_baseDirectory, modulePath));
+        if (File.Exists(relativeCandidate))
+        {
+            return relativeCandidate;
+        }
+
+        return Path.GetFullPath(modulePath);
     }
 }

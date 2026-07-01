@@ -39,7 +39,9 @@ if (args.Length == 1)
         return;
     }
 
-     Run(new Interpreter(), File.ReadAllText(file));
+    string fullPath = Path.GetFullPath(file);
+    string baseDirectory = Path.GetDirectoryName(fullPath) ?? Directory.GetCurrentDirectory();
+    Run(new Interpreter(baseDirectory), File.ReadAllText(fullPath));
 }
 else
 {
