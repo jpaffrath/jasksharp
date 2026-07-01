@@ -21,6 +21,8 @@ public enum TokenType
     To,
     With,
     EndFor,
+    Repeat,
+    Times,
     Break,
     True,
     False,

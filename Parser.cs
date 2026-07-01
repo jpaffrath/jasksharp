@@ -24,6 +24,7 @@ public class Parser(List<Token> tokens, string? filePath = null)
         if (Match(TokenType.If))       return IfStatement();
         if (Match(TokenType.While))    return WhileStatement();
         if (Match(TokenType.For))      return ForStatement();
+        if (Match(TokenType.Repeat))   return RepeatStatement();
         if (Match(TokenType.Function)) return FunctionStatement();
         if (Match(TokenType.Struct))   return StructStatement();
         if (Match(TokenType.Use))      return UseStatement();

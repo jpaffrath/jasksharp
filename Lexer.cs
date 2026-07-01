@@ -24,6 +24,8 @@ public class Lexer
         ["to"]        = TokenType.To,
         ["with"]      = TokenType.With,
         ["endfor"]    = TokenType.EndFor,
+        ["repeat"]    = TokenType.Repeat,
+        ["times"]     = TokenType.Times,
         ["true"]      = TokenType.True,
         ["false"]     = TokenType.False,
         ["nil"]       = TokenType.Nil,

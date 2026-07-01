@@ -32,6 +32,8 @@ public abstract record Statement
 
     public record ForIn(Token Variable, JaskLang.Expression Collection, List<Statement> Body) : Statement;
 
+    public record RepeatTimes(JaskLang.Expression Body, JaskLang.Expression Times) : Statement;
+
     public record Break() : Statement;
 
     public record Function(Token Name, List<(Token Name, Token Type)> Params, List<Statement> Body) : Statement;
